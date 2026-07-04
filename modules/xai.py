@@ -1,3 +1,6 @@
+from textwrap import dedent
+
+code = dedent('''
 ##############################################################
 # modules/xai.py
 # Explainable Artificial Intelligence (SHAP)
@@ -6,319 +9,106 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-
 import shap
 import joblib
-
 import matplotlib.pyplot as plt
 import plotly.express as px
-
-##############################################################
-# MAIN FUNCTION
-##############################################################
 
 def shap_dashboard(df):
 
     st.header("🧠 Explainable Artificial Intelligence (SHAP)")
-
-    st.markdown("""
-Model Explainability digunakan untuk mengetahui
-kontribusi masing-masing variabel iklim terhadap
-prediksi Machine Learning.
-""")
-
-    ###########################################################
-    # LOAD MODEL
-    ###########################################################
+    st.write("Model Explainability menggunakan SHAP untuk menjelaskan prediksi model XGBoost.")
 
     model_file = joblib.load("models/xgboost.pkl")
-
     model = model_file["model"]
 
-    ###########################################################
-    # FEATURE
-    ###########################################################
-
     feature_columns = [
-
-        "Rainfall",
-        "Tmax",
-        "Tmin",
-        "Humidity",
-        "Pressure",
-        "Wind",
-        "Solar",
-        "ENSO",
-        "IOD",
-        "NDVI",
-        "SPI"
-
+        "Rainfall","Tmax","Tmin","Humidity","Pressure",
+        "Wind","Solar","ENSO","IOD","NDVI","SPI"
     ]
 
     X = df[feature_columns]
 
-    ###########################################################
-    # SHAP EXPLAINER
-    ###########################################################
-
-    explainer = shap.TreeExplainer(model)
-
-    shap_values = explainer.shap_values(X)
+    try:
+        explainer = shap.Explainer(model)
+        shap_values = explainer(X)
+        use_new = True
+    except Exception:
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X)
+        use_new = False
 
     st.success("SHAP values successfully calculated.")
 
-##############################################################
-# SHAP SUMMARY PLOT
-##############################################################
+    st.markdown("---")
+    st.subheader("📊 SHAP Summary Plot")
 
-st.markdown("---")
-st.subheader("📊 SHAP Summary Plot")
+    fig = plt.figure(figsize=(10,6))
+    try:
+        if use_new:
+            shap.plots.beeswarm(shap_values, show=False)
+        else:
+            shap.summary_plot(shap_values, X, show=False)
+    except Exception:
+        try:
+            shap.summary_plot(shap_values[0], X, show=False)
+        except Exception as e:
+            st.error(f"Summary plot gagal: {e}")
+    st.pyplot(fig)
+    plt.close()
 
-fig_summary = plt.figure(figsize=(10,6))
+    st.markdown("---")
+    st.subheader("📈 SHAP Feature Importance")
 
-try:
+    if use_new:
+        vals = np.abs(shap_values.values).mean(axis=0)
+    else:
+        if isinstance(shap_values, list):
+            vals = np.mean([np.abs(v).mean(axis=0) for v in shap_values], axis=0)
+        else:
+            vals = np.abs(shap_values).mean(axis=0)
 
-    # Untuk SHAP versi baru
-    shap.summary_plot(
-        shap_values,
-        X,
-        show=False
+    importance = pd.DataFrame({
+        "Feature": feature_columns,
+        "Mean_SHAP": vals
+    }).sort_values("Mean_SHAP", ascending=False)
+
+    st.dataframe(importance, use_container_width=True)
+
+    fig2 = px.bar(
+        importance,
+        x="Mean_SHAP",
+        y="Feature",
+        orientation="h",
+        color="Mean_SHAP"
     )
+    st.plotly_chart(fig2, use_container_width=True)
 
-except:
+    idx = st.slider("Pilih Observasi",0,len(X)-1,0)
 
-    # Fallback untuk multiclass
-    shap.summary_plot(
-        shap_values[0],
-        X,
-        show=False
+    st.markdown("---")
+    st.subheader("🔍 Local Prediction")
+
+    try:
+        fig3 = plt.figure(figsize=(10,6))
+        if use_new:
+            shap.plots.waterfall(shap_values[idx], show=False)
+        st.pyplot(fig3)
+        plt.close()
+    except Exception:
+        st.info("Waterfall plot tidak tersedia untuk konfigurasi model ini.")
+
+    csv = importance.to_csv(index=False)
+    st.download_button(
+        "📥 Download SHAP Importance",
+        csv,
+        file_name="shap_importance.csv",
+        mime="text/csv"
     )
+''')
 
-st.pyplot(fig_summary)
+path="/mnt/data/xai.py"
+with open(path,"w",encoding="utf-8") as f:
+    f.write(code)
 
-plt.close()
-
-##############################################################
-# SHAP BAR PLOT
-##############################################################
-
-st.markdown("---")
-st.subheader("📈 Global Feature Importance (SHAP)")
-
-fig_bar = plt.figure(figsize=(10,6))
-
-try:
-
-    shap.summary_plot(
-        shap_values,
-        X,
-        plot_type="bar",
-        show=False
-    )
-
-except:
-
-    shap.summary_plot(
-        shap_values[0],
-        X,
-        plot_type="bar",
-        show=False
-    )
-
-st.pyplot(fig_bar)
-
-plt.close()
-
-##############################################################
-# SELECT OBSERVATION
-##############################################################
-
-st.markdown("---")
-
-st.subheader("🔍 Local Explanation")
-
-index = st.slider(
-
-    "Select Observation",
-
-    0,
-
-    len(X)-1,
-
-    0
-
-)
-
-##############################################################
-# WATERFALL PLOT
-##############################################################
-
-st.subheader("💧 SHAP Waterfall Plot")
-
-fig_water = plt.figure(figsize=(10,7))
-
-try:
-
-    shap.plots.waterfall(
-
-        shap.Explanation(
-
-            values=shap_values[index],
-
-            base_values=explainer.expected_value,
-
-            data=X.iloc[index],
-
-            feature_names=X.columns
-
-        ),
-
-        show=False
-
-    )
-
-except:
-
-    pass
-
-st.pyplot(fig_water)
-
-plt.close()
-
-##############################################################
-# DEPENDENCE PLOT
-##############################################################
-
-st.markdown("---")
-
-st.subheader("📉 SHAP Dependence Plot")
-
-feature = st.selectbox(
-
-    "Feature",
-
-    feature_columns
-
-)
-
-fig_dep = plt.figure(figsize=(8,6))
-
-try:
-
-    shap.dependence_plot(
-
-        feature,
-
-        shap_values,
-
-        X,
-
-        show=False
-
-    )
-
-except:
-
-    pass
-
-st.pyplot(fig_dep)
-
-plt.close()
-
-##############################################################
-# FEATURE IMPORTANCE TABLE
-##############################################################
-
-st.markdown("---")
-
-st.subheader("Feature Importance (Mean SHAP)")
-
-try:
-
-    importance = np.abs(shap_values).mean(axis=0)
-
-except:
-
-    importance = np.abs(shap_values[0]).mean(axis=0)
-
-importance_df = pd.DataFrame(
-
-    {
-
-        "Feature":feature_columns,
-
-        "Mean_SHAP":importance
-
-    }
-
-)
-
-importance_df = importance_df.sort_values(
-
-    "Mean_SHAP",
-
-    ascending=False
-
-)
-
-st.dataframe(
-
-    importance_df,
-
-    use_container_width=True
-
-)
-
-##############################################################
-# PLOTLY FEATURE IMPORTANCE
-##############################################################
-
-fig = px.bar(
-
-    importance_df,
-
-    x="Mean_SHAP",
-
-    y="Feature",
-
-    orientation="h",
-
-    color="Mean_SHAP",
-
-    color_continuous_scale="Viridis"
-
-)
-
-fig.update_layout(
-
-    height=550,
-
-    title="SHAP Global Feature Importance"
-
-)
-
-st.plotly_chart(
-
-    fig,
-
-    use_container_width=True
-
-)
-
-##############################################################
-# DOWNLOAD SHAP
-##############################################################
-
-csv = importance_df.to_csv(index=False)
-
-st.download_button(
-
-    "📥 Download SHAP Importance",
-
-    csv,
-
-    file_name="shap_importance.csv",
-
-    mime="text/csv"
-
-)
+print(path)
