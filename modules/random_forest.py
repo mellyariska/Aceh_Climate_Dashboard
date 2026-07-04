@@ -11,7 +11,12 @@ def random_forest_dashboard(df):
     st.header("🌳 Random Forest Machine Learning")
     feats=["Rainfall","Tmax","Tmin","Humidity","Pressure","Wind","Solar","ENSO","IOD","NDVI","SPI"]
     X=df[feats].apply(pd.to_numeric,errors="coerce")
-    y=df["Disaster"]
+   df["Disaster"] = (
+    df["Disaster"]
+      .fillna("Normal")
+      .astype(str)
+      .str.strip()
+)
     data=pd.concat([X,y],axis=1).dropna()
     X=data[feats]; y=data["Disaster"]
     n=st.slider("Number of Trees",50,500,200,10)
