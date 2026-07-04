@@ -1,6 +1,4 @@
-from textwrap import dedent
 
-code = dedent('''
 ##############################################################
 # modules/xai.py
 # Explainable Artificial Intelligence (SHAP)
@@ -105,10 +103,3 @@ def shap_dashboard(df):
         file_name="shap_importance.csv",
         mime="text/csv"
     )
-''')
-
-path="/mnt/data/xai.py"
-with open(path,"w",encoding="utf-8") as f:
-    f.write(code)
-
-print(path)
