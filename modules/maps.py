@@ -7,6 +7,7 @@ import streamlit as st
 import folium
 
 from streamlit_folium import st_folium
+from folium.plugins import HeatMap
 
 ###########################################################
 # FUNCTION
@@ -16,9 +17,10 @@ def climate_map(df):
 
     st.subheader("🗺 Spatial Distribution of Extreme Climate Events")
 
-    # titik tengah Aceh
-    aceh = [4.695135,96.749399]
+    # Titik tengah Aceh
+    aceh = [4.695135, 96.749399]
 
+    # Membuat peta
     m = folium.Map(
 
         location=aceh,
@@ -33,54 +35,43 @@ def climate_map(df):
     # Marker berdasarkan jenis bencana
     ###########################################################
 
-    for _,row in df.iterrows():
+    for _, row in df.iterrows():
 
-        if row["Disaster"]=="Flood":
+        if row["Disaster"] == "Flood":
 
-            color="blue"
+            color = "blue"
+            icon = "tint"
 
-            icon="tint"
+        elif row["Disaster"] == "Drought":
 
-        elif row["Disaster"]=="Drought":
+            color = "orange"
+            icon = "fire"
 
-            color="orange"
+        elif row["Disaster"] == "Heatwave":
 
-            icon="fire"
-
-        elif row["Disaster"]=="Heatwave":
-
-            color="red"
-
-            icon="sun"
+            color = "red"
+            icon = "sun"
 
         else:
 
-            color="green"
-
-            icon="cloud"
+            color = "green"
+            icon = "cloud"
 
         folium.Marker(
 
             location=[
 
                 row["Latitude"],
-
                 row["Longitude"]
 
             ],
 
             popup=f"""
-
-            Province : {row['Province']}
-
-            Rainfall : {row['Rainfall']} mm
-
-            Tmax : {row['Tmax']} °C
-
-            Humidity : {row['Humidity']} %
-
-            Disaster : {row['Disaster']}
-
+            <b>Province</b> : {row['Province']}<br>
+            <b>Rainfall</b> : {row['Rainfall']} mm<br>
+            <b>Tmax</b> : {row['Tmax']} °C<br>
+            <b>Humidity</b> : {row['Humidity']} %<br>
+            <b>Disaster</b> : {row['Disaster']}
             """,
 
             tooltip=row["Province"],
@@ -98,38 +89,36 @@ def climate_map(df):
         ).add_to(m)
 
     ###########################################################
-    # tampilkan
+    # HeatMap
     ###########################################################
 
-from folium.plugins import HeatMap
+    heat = []
 
-heat=[]
+    for _, row in df.iterrows():
 
-for _,row in df.iterrows():
-
-    heat.append(
-
-        [
+        heat.append([
 
             row["Latitude"],
-
             row["Longitude"],
-
             row["Rainfall"]
 
-        ]
+        ])
 
-    )
+    HeatMap(
 
-HeatMap(
+        heat,
 
-    heat,
+        radius=18,
 
-    radius=18,
+        blur=12,
 
-    blur=12
+        min_opacity=0.3
 
-).add_to(m)
+    ).add_to(m)
+
+    ###########################################################
+    # Tampilkan Peta
+    ###########################################################
 
     st_folium(
 
@@ -137,6 +126,8 @@ HeatMap(
 
         width=1200,
 
-        height=650
+        height=650,
+
+        returned_objects=[]
 
     )
