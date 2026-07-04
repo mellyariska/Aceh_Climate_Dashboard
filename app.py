@@ -42,9 +42,9 @@ st.caption("Climate Big Data • Machine Learning • Explainable AI")
 @st.cache_data
 def load_data():
     files=[
-        "data_aceh.xlsx",
-        "data/data_aceh.xlsx",
-        "data/climate_data.xlsx"
+        "data_aceh_1985_2025.xlsx",
+        "data/data_aceh_1985_2025.xlsx",
+        "data/data_aceh_1985_2025.xlsx"
     ]
     for f in files:
         try:
