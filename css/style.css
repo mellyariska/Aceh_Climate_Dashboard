@@ -1,0 +1,178 @@
+/* =======================================================
+   Climate Intelligence Dashboard
+   Theme BMKG + NASA
+======================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+html,body,.stApp{
+
+font-family:Poppins,sans-serif;
+
+background:#f5f7fb;
+
+color:#1d3557;
+
+}
+
+/* Header */
+
+h1{
+
+font-size:38px;
+
+font-weight:700;
+
+color:#003566;
+
+}
+
+h2{
+
+font-size:28px;
+
+font-weight:600;
+
+color:#00509d;
+
+}
+
+h3{
+
+color:#00509d;
+
+}
+
+/* Metric */
+
+div[data-testid="metric-container"]{
+
+background:white;
+
+border-radius:15px;
+
+padding:18px;
+
+box-shadow:0px 5px 15px rgba(0,0,0,.08);
+
+border-left:6px solid #0077b6;
+
+}
+
+/* Sidebar */
+
+section[data-testid="stSidebar"]{
+
+background:#0B2545;
+
+color:white;
+
+}
+
+section[data-testid="stSidebar"] *{
+
+color:white;
+
+}
+
+/* Button */
+
+.stButton>button{
+
+background:#0077b6;
+
+color:white;
+
+border:none;
+
+border-radius:10px;
+
+padding:10px 20px;
+
+font-weight:600;
+
+}
+
+.stButton>button:hover{
+
+background:#023e8a;
+
+}
+
+/* Download */
+
+.stDownloadButton>button{
+
+background:#06d6a0;
+
+color:white;
+
+border-radius:10px;
+
+}
+
+/* Success */
+
+.stSuccess{
+
+border-radius:10px;
+
+}
+
+/* Warning */
+
+.stWarning{
+
+border-radius:10px;
+
+}
+
+/* Error */
+
+.stError{
+
+border-radius:10px;
+
+}
+
+/* DataFrame */
+
+div[data-testid="stDataFrame"]{
+
+border-radius:12px;
+
+overflow:hidden;
+
+}
+
+/* Footer */
+
+.footer{
+
+text-align:center;
+
+padding:20px;
+
+font-size:13px;
+
+color:gray;
+
+}
+
+###########################################################
+# LOAD CSS
+###########################################################
+
+def local_css(file_name):
+
+    with open(file_name) as f:
+
+        st.markdown(
+
+            f"<style>{f.read()}</style>",
+
+            unsafe_allow_html=True
+
+        )
+
+local_css("css/style.css")
