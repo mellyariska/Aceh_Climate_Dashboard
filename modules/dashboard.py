@@ -56,7 +56,7 @@ def dashboard(df):
 
             st.image(
 
-                "assets/logo_unsri.png",
+                "assets/Download-PNG-Logo-Universitas-Sriwijaya_.jpg",
 
                 width=100
 
@@ -121,7 +121,7 @@ Platform ini mengintegrasikan:
 
             st.image(
 
-                "assets/melly.jpg",
+                "assets/Dr. Melly Ariska, S.Pd., M.Sc.jpeg",
 
                 width=170
 
