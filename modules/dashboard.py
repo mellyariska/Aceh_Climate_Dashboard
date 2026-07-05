@@ -52,11 +52,11 @@ def dashboard(df):
 
     with left:
 
-        if os.path.exists("assets/logo_unsri.jfif"):
+        if os.path.exists("assets/unsri1.png"):
 
             st.image(
 
-                "assets/logo_unsri.jfif",
+                "assets/unsri1.png",
 
                 width=100
 
@@ -76,11 +76,11 @@ Decision Support System for Extreme Climate Analysis in Aceh
 
     with right:
 
-        if os.path.exists("assets/logo_bmkg.png"):
+        if os.path.exists("assets/unsri1.png"):
 
             st.image(
 
-                "assets/logo_bmkg.png",
+                "assets/unsri1.png",
 
                 width=90
 
@@ -355,11 +355,11 @@ Universitas Sriwijaya
 
     with c1:
 
-        if os.path.exists("assets/logo_unsri.jfif"):
+        if os.path.exists("assets/unsri1.png"):
 
             st.image(
 
-                "assets/logo_unsri.jfif",
+                "assets/unsri1.png",
 
                 width=60
 
@@ -385,11 +385,11 @@ Universitas Sriwijaya
 
     with c3:
 
-        if os.path.exists("assets/logo_bmkg.png"):
+        if os.path.exists("assets/unsri1.png"):
 
             st.image(
 
-                "assets/logo_bmkg.png",
+                "assets/unsri1.png",
 
                 width=60
 
