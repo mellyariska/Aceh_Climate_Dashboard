@@ -61,12 +61,15 @@ border-left:6px solid #0077b6;
 
 /* Sidebar */
 
-section[data-testid="stSidebar"]{
+section[data-testid="stSidebar"] label{
+    color:white;
+}
 
-background:#0B2545;
-
-color:white;
-
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] p{
+    color:white;
 }
 
 section[data-testid="stSidebar"] *{
