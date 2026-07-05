@@ -44,8 +44,39 @@ try:
 except:
     pass
 
-st.title("🌦 Aceh Extreme Climate Dashboard")
-st.caption("Climate Big Data • Machine Learning • Explainable AI")
+import os
+
+##############################################################
+# HEADER
+##############################################################
+
+left, center, right = st.columns([1,6,1])
+
+with left:
+
+    if os.path.exists("assets/logo_unsri.png"):
+        st.image(
+            "assets/logo_unsri.png",
+            width=110
+        )
+
+with center:
+
+    st.markdown("""
+# 🌦 Aceh Extreme Climate Dashboard
+
+### Climate Big Data • Machine Learning • Explainable AI
+
+Decision Support System for Extreme Climate Analysis in Aceh
+""")
+
+with right:
+
+    if os.path.exists("assets/logo_bmkg.png"):
+        st.image(
+            "assets/logo_bmkg.png",
+            width=95
+        )
 
 @st.cache_data
 def load_data():
@@ -90,7 +121,49 @@ menu=st.sidebar.radio(
 
 if menu=="Dashboard":
 
-    st.subheader("Climate Summary")
+    ##############################################################
+# DASHBOARD PROFILE
+##############################################################
+
+col1,col2 = st.columns([4,1])
+
+with col1:
+
+    st.info("""
+
+Dashboard ini dikembangkan untuk menganalisis kejadian
+iklim ekstrem di Provinsi Aceh menggunakan:
+
+✅ Machine Learning
+
+✅ XGBoost
+
+✅ Explainable AI (SHAP)
+
+✅ Decision Support System
+
+✅ Early Warning System
+
+""")
+
+with col2:
+
+    if os.path.exists("assets/melly.jpg"):
+
+        st.image(
+            "assets/melly.jpg",
+            width=170
+        )
+
+    st.markdown("""
+### **Melly Ariska**
+
+Physics Education
+
+Faculty of Teacher Training and Education
+
+Universitas Sriwijaya
+""")
 
     c1,c2,c3,c4,c5=st.columns(5)
 
@@ -136,4 +209,35 @@ elif menu=="Report":
         st.warning("report.py belum memiliki report_dashboard().")
 
 st.markdown("---")
-st.caption("Developed by Melly Ariska | Universitas Sriwijaya")
+
+c1,c2,c3 = st.columns([1,5,1])
+
+with c1:
+
+    if os.path.exists("assets/logo_unsri.png"):
+        st.image(
+            "assets/logo_unsri.png",
+            width=70
+        )
+
+with c2:
+
+    st.markdown("""
+
+### Universitas Sriwijaya
+
+Physics Education Department
+
+Machine Learning • Climate Intelligence
+
+© 2026 Melly Ariska
+
+""")
+
+with c3:
+
+    if os.path.exists("assets/logo_bmkg.png"):
+        st.image(
+            "assets/logo_bmkg.png",
+            width=60
+        )
