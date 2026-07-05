@@ -1,163 +1,266 @@
-/* =======================================================
-   Climate Intelligence Dashboard
-   Theme BMKG + NASA
-======================================================= */
+/* ==========================================================
+   Aceh Extreme Climate Dashboard
+   BMKG + NASA Modern Theme
+   Compatible with Streamlit 1.40+
+========================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
-html,body,.stApp{
+/* ==========================================================
+   GLOBAL
+========================================================== */
 
-font-family:Poppins,sans-serif;
+html,
+body,
+.stApp{
 
-background:#f5f7fb;
+    font-family:'Poppins',sans-serif;
 
-color:#1d3557;
+    background:#F4F7FC;
+
+    color:#183153;
 
 }
 
-/* Header */
+/* ==========================================================
+   HEADER
+========================================================== */
 
 h1{
 
-font-size:38px;
+    color:#0B3C6D;
 
-font-weight:700;
+    font-weight:700;
 
-color:#003566;
+    font-size:40px;
 
 }
 
 h2{
 
-font-size:28px;
+    color:#0B3C6D;
 
-font-weight:600;
-
-color:#00509d;
+    font-weight:600;
 
 }
 
 h3{
 
-color:#00509d;
+    color:#0B3C6D;
+
+    font-weight:600;
 
 }
 
-/* Metric */
+h4{
 
-div[data-testid="metric-container"]{
-
-background:white;
-
-border-radius:15px;
-
-padding:18px;
-
-box-shadow:0px 5px 15px rgba(0,0,0,.08);
-
-border-left:6px solid #0077b6;
+    color:#0B3C6D;
 
 }
 
-/* Sidebar */
+/* ==========================================================
+   SIDEBAR
+========================================================== */
 
-section[data-testid="stSidebar"] label{
-    color:white;
+section[data-testid="stSidebar"]{
+
+    background:#102A43;
+
 }
 
 section[data-testid="stSidebar"] h1,
 section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3,
-section[data-testid="stSidebar"] p{
+section[data-testid="stSidebar"] h4,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] label{
+
     color:white;
-}
 
-section[data-testid="stSidebar"] *{
-
-color:white;
+    font-weight:600;
 
 }
 
-/* Button */
+/* ==========================================================
+   SELECTBOX
+========================================================== */
+
+div[data-baseweb="select"]{
+
+    background:white;
+
+    border-radius:8px;
+
+}
+
+div[data-baseweb="select"] *{
+
+    color:#222 !important;
+
+}
+
+/* ==========================================================
+   INPUT
+========================================================== */
+
+input{
+
+    color:#222 !important;
+
+}
+
+/* ==========================================================
+   RADIO
+========================================================== */
+
+div[role="radiogroup"] label{
+
+    color:white !important;
+
+}
+
+/* ==========================================================
+   BUTTON
+========================================================== */
 
 .stButton>button{
 
-background:#0077b6;
+    background:#1976D2;
 
-color:white;
+    color:white;
 
-border:none;
+    border:none;
 
-border-radius:10px;
+    border-radius:10px;
 
-padding:10px 20px;
+    font-weight:600;
 
-font-weight:600;
+    padding:10px;
 
 }
 
 .stButton>button:hover{
 
-background:#023e8a;
+    background:#0D47A1;
 
 }
 
-/* Download */
+/* ==========================================================
+   DOWNLOAD BUTTON
+========================================================== */
 
 .stDownloadButton>button{
 
-background:#06d6a0;
+    background:#00A878;
 
-color:white;
+    color:white;
 
-border-radius:10px;
+    border:none;
 
-}
-
-/* Success */
-
-.stSuccess{
-
-border-radius:10px;
+    border-radius:10px;
 
 }
 
-/* Warning */
+/* ==========================================================
+   METRIC
+========================================================== */
 
-.stWarning{
+div[data-testid="metric-container"]{
 
-border-radius:10px;
+    background:white;
+
+    padding:18px;
+
+    border-radius:14px;
+
+    border-left:6px solid #1976D2;
+
+    box-shadow:0 4px 15px rgba(0,0,0,.08);
 
 }
 
-/* Error */
-
-.stError{
-
-border-radius:10px;
-
-}
-
-/* DataFrame */
+/* ==========================================================
+   DATAFRAME
+========================================================== */
 
 div[data-testid="stDataFrame"]{
 
-border-radius:12px;
+    background:white;
 
-overflow:hidden;
+    border-radius:12px;
+
+    overflow:hidden;
 
 }
 
-/* Footer */
+/* ==========================================================
+   SUCCESS
+========================================================== */
+
+div[data-testid="stAlert"]{
+
+    border-radius:10px;
+
+}
+
+/* ==========================================================
+   SLIDER
+========================================================== */
+
+.stSlider{
+
+    padding-top:10px;
+
+    padding-bottom:10px;
+
+}
+
+/* ==========================================================
+   TABS
+========================================================== */
+
+button[data-baseweb="tab"]{
+
+    font-weight:600;
+
+}
+
+/* ==========================================================
+   EXPANDER
+========================================================== */
+
+details{
+
+    background:white;
+
+    border-radius:10px;
+
+    padding:10px;
+
+}
+
+/* ==========================================================
+   PLOTLY
+========================================================== */
+
+.js-plotly-plot{
+
+    border-radius:12px;
+
+}
+
+/* ==========================================================
+   FOOTER
+========================================================== */
 
 .footer{
 
-text-align:center;
+    text-align:center;
 
-padding:20px;
+    padding:20px;
 
-font-size:13px;
+    color:#666;
 
-color:gray;
+    font-size:13px;
 
 }
