@@ -117,11 +117,11 @@ Platform ini mengintegrasikan:
 
     with col2:
 
-        if os.path.exists("assets/Dr. Melly Ariska, S.Pd., M.Sc.jpeg"):
+        if os.path.exists("assets/Dr. Melly Ariska, S.Pd., M.Sc..jpeg"):
 
             st.image(
 
-                "assets/Dr. Melly Ariska, S.Pd., M.Sc.jpeg",
+                "assets/Dr. Melly Ariska, S.Pd., M.Sc..jpeg",
 
                 width=170
 
