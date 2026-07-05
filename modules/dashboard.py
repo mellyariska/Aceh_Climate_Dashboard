@@ -355,11 +355,11 @@ Universitas Sriwijaya
 
     with c1:
 
-        if os.path.exists("assets/logo_unsri.png"):
+        if os.path.exists("assets/Download-PNG-Logo-Universitas-Sriwijaya_.jpg"):
 
             st.image(
 
-                "assets/logo_unsri.png",
+                "assets/Download-PNG-Logo-Universitas-Sriwijaya_.jpg",
 
                 width=60
 
