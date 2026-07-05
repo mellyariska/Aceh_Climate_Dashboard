@@ -1,16 +1,16 @@
 ##############################################################
 # modules/xai.py
-# Explainable Artificial Intelligence
-# Compatible with SHAP 0.47+
+# Explainable Artificial Intelligence (SHAP)
+# Compatible with XGBoost Multiclass
 ##############################################################
 
+import os
 import joblib
 import shap
 import numpy as np
 import pandas as pd
 
 import streamlit as st
-
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
@@ -25,245 +25,242 @@ def shap_dashboard(df):
     st.header("🧠 Explainable Artificial Intelligence (SHAP)")
 
     st.markdown("""
+Model Explainability menggunakan **SHAP (SHapley Additive Explanations)**
 
-Model Explainability digunakan untuk mengetahui
-variabel iklim yang paling berpengaruh
-terhadap prediksi XGBoost.
-
+Dashboard ini menjelaskan bagaimana setiap variabel iklim
+mempengaruhi hasil prediksi model XGBoost.
 """)
 
-   ##############################################################
-# LOAD MODEL
-##############################################################
-
-model_file = joblib.load("models/xgboost.pkl")
-
-model = model_file["model"]
-
-feature_columns = model_file["features"]
-
-##############################################################
-# PREPROCESSING
-##############################################################
-
-X = df[feature_columns].copy()
-
-for c in feature_columns:
-    X[c] = pd.to_numeric(X[c], errors="coerce")
-
-X = X.fillna(X.mean())
-
-##############################################################
-# SHAP EXPLAINER
-##############################################################
-
-explainer = shap.Explainer(model)
-
-shap_values = explainer(X)
-
-##############################################################
-# HANDLE MULTICLASS
-##############################################################
-
-if len(shap_values.values.shape) == 3:
-
-    # (sample, feature, class)
-    if shap_values.values.shape[1] == len(feature_columns):
-
-        shap_matrix = shap_values.values[:, :, 0]
-
-    # (sample, class, feature)
-    else:
-
-        shap_matrix = shap_values.values[:, 0, :]
-
-else:
-
-    shap_matrix = shap_values.values
-
-##############################################################
-# CREATE EXPLANATION
-##############################################################
-
-shap_plot = shap.Explanation(
-
-    values=shap_matrix,
-
-    base_values=np.repeat(
-        np.mean(np.array(shap_values.base_values)),
-        len(X)
-    ),
-
-    data=X.values,
-
-    feature_names=feature_columns
-
-)
-
-st.success("SHAP values successfully calculated.")
-
-st.write("X shape :", X.shape)
-
-st.write("SHAP :", shap_matrix.shape)
-
     ##############################################################
-    # CEK DIMENSI SHAP
+    # CHECK MODEL
     ##############################################################
 
-    st.success("SHAP values berhasil dihitung.")
+    model_path = "models/xgboost.pkl"
 
-    st.info(
+    if not os.path.exists(model_path):
 
-        f"""
-Jumlah Observasi : {X.shape[0]}
+        st.error("Model XGBoost belum tersedia.")
 
-Jumlah Fitur : {X.shape[1]}
-
-Dimensi SHAP : {values.shape}
-"""
-
-    )
-
-    ##############################################################
-    # NORMALISASI DIMENSI
-    ##############################################################
-
-    # Binary Classification
-    if values.ndim == 2:
-
-        shap_matrix = values
-
-    # Multi-class
-    elif values.ndim == 3:
-
-        # rata-rata absolut seluruh kelas
-        shap_matrix = np.mean(
-
-            np.abs(values),
-
-            axis=2
-
-        )
-
-    else:
-
-        st.error(
-
-            "Format SHAP tidak dikenali."
-
-        )
+        st.info("Silakan buka menu **XGBoost** terlebih dahulu lalu lakukan Training Model.")
 
         return
 
-    st.success(
+    ##############################################################
+    # LOAD MODEL
+    ##############################################################
 
-        f"SHAP matrix siap digunakan : {shap_matrix.shape}"
+    model_file = joblib.load(model_path)
 
-    )
+    model = model_file["model"]
+
+    encoder = model_file["encoder"]
+
+    feature_columns = model_file["features"]
+
+    st.success("✅ XGBoost Model Loaded Successfully")
+
+    st.write("Jumlah Feature :", len(feature_columns))
         ##############################################################
-   fig = plt.figure(figsize=(10,6))
+    # PREPROCESSING
+    ##############################################################
 
-shap.plots.beeswarm(
-
-    shap_plot,
-
-    show=False
-
-)
-
-st.pyplot(fig)
-
-plt.close()
+    X = df[feature_columns].copy()
 
     ##############################################################
-    # BAR SUMMARY
+    # NUMERIC CONVERSION
+    ##############################################################
+
+    for col in feature_columns:
+
+        X[col] = pd.to_numeric(
+
+            X[col],
+
+            errors="coerce"
+
+        )
+
+    ##############################################################
+    # HANDLE MISSING VALUE
+    ##############################################################
+
+    X = X.fillna(
+
+        X.mean(numeric_only=True)
+
+    )
+
+    st.success(f"{len(X)} observasi berhasil dimuat.")
+
+    ##############################################################
+    # SHAP EXPLAINER
     ##############################################################
 
     st.markdown("---")
 
-    st.subheader("📈 SHAP Summary Bar")
+    st.subheader("⚙ SHAP Explainer")
 
-    fig_bar = plt.figure(figsize=(10,6))
+    with st.spinner("Calculating SHAP values..."):
+
+        explainer = shap.Explainer(model)
+
+        shap_values = explainer(X)
+
+    ##############################################################
+    # MULTICLASS COMPATIBILITY
+    ##############################################################
+
+    values = shap_values.values
+
+    if values.ndim == 3:
+
+        # Case 1 : (sample, feature, class)
+
+        if values.shape[1] == len(feature_columns):
+
+            shap_matrix = values[:, :, 0]
+
+        # Case 2 : (sample, class, feature)
+
+        elif values.shape[2] == len(feature_columns):
+
+            shap_matrix = values[:, 0, :]
+
+        else:
+
+            st.error("Unknown SHAP output shape.")
+
+            st.write(values.shape)
+
+            return
+
+    else:
+
+        shap_matrix = values
+
+    ##############################################################
+    # BUILD SHAP EXPLANATION
+    ##############################################################
+
+    base = np.mean(
+
+        np.array(
+
+            shap_values.base_values
+
+        )
+
+    )
+
+    shap_plot = shap.Explanation(
+
+        values=shap_matrix,
+
+        base_values=np.repeat(
+
+            base,
+
+            len(X)
+
+        ),
+
+        data=X.values,
+
+        feature_names=feature_columns
+
+    )
+
+    ##############################################################
+    # DEBUG INFORMATION
+    ##############################################################
+
+    st.success("SHAP values successfully calculated.")
+
+    st.write("Data Shape :", X.shape)
+
+    st.write("SHAP Shape :", shap_matrix.shape)
+
+    st.write("Feature :", len(feature_columns))
+        ##############################################################
+    # SHAP SUMMARY PLOT
+    ##############################################################
+
+    st.markdown("---")
+
+    st.subheader("📊 SHAP Summary Plot")
 
     try:
 
-        shap.plots.bar(
+        fig_summary = plt.figure(figsize=(10,6))
 
-            explanation,
+        shap.summary_plot(
 
-            max_display=20,
+            shap_plot.values,
+
+            X,
+
+            show=False,
+
+            plot_size=(10,6)
+
+        )
+
+        st.pyplot(fig_summary)
+
+        plt.close()
+
+    except Exception as e:
+
+        st.error(f"Summary plot gagal: {e}")
+
+    ##############################################################
+    # SHAP BEESWARM
+    ##############################################################
+
+    st.markdown("---")
+
+    st.subheader("🐝 SHAP Beeswarm Plot")
+
+    try:
+
+        fig_bee = plt.figure(figsize=(10,6))
+
+        shap.plots.beeswarm(
+
+            shap_plot,
+
+            max_display=15,
 
             show=False
 
         )
 
-        st.pyplot(
+        st.pyplot(fig_bee)
 
-            fig_bar,
-
-            use_container_width=True
-
-        )
+        plt.close()
 
     except Exception as e:
 
-        st.error(
-
-            f"Bar Plot gagal : {e}"
-
-        )
-
-    plt.close()
-
-        ##############################################################
+        st.warning(f"Beeswarm plot tidak tersedia : {e}")
+            ##############################################################
     # GLOBAL FEATURE IMPORTANCE
     ##############################################################
 
-    vals = np.abs(shap_matrix).mean(axis=0)
+    st.markdown("---")
 
-importance = pd.DataFrame({
-
-    "Feature": feature_columns,
-
-    "Mean_SHAP": vals
-
-})
-
-importance = importance.sort_values(
-
-    "Mean_SHAP",
-
-    ascending=False
-
-)
+    st.subheader("📈 SHAP Global Feature Importance")
 
     ##############################################################
-    # Mean Absolute SHAP
+    # MEAN ABSOLUTE SHAP
     ##############################################################
 
-    mean_shap = np.mean(
+    importance = pd.DataFrame({
 
-        np.abs(shap_matrix),
+        "Feature": feature_columns,
 
-        axis=0
+        "Mean_SHAP": np.abs(shap_matrix).mean(axis=0)
 
-    )
-
-    ##############################################################
-    # DataFrame
-    ##############################################################
-
-    importance = pd.DataFrame(
-
-        {
-
-            "Feature": feature_columns,
-
-            "Mean_SHAP": mean_shap
-
-        }
-
-    )
+    })
 
     importance = importance.sort_values(
 
@@ -271,7 +268,7 @@ importance = importance.sort_values(
 
         ascending=False
 
-    ).reset_index(drop=True)
+    )
 
     ##############################################################
     # TABLE
@@ -281,17 +278,15 @@ importance = importance.sort_values(
 
         importance,
 
-        use_container_width=True,
-
-        hide_index=True
+        use_container_width=True
 
     )
 
     ##############################################################
-    # HORIZONTAL BAR
+    # BAR CHART
     ##############################################################
 
-    fig = px.bar(
+    fig_bar = px.bar(
 
         importance,
 
@@ -309,7 +304,7 @@ importance = importance.sort_values(
 
     )
 
-    fig.update_layout(
+    fig_bar.update_layout(
 
         title="Global SHAP Feature Importance",
 
@@ -321,7 +316,23 @@ importance = importance.sort_values(
 
     st.plotly_chart(
 
-        fig,
+        fig_bar,
+
+        use_container_width=True
+
+    )
+
+    ##############################################################
+    # TOP 10 VARIABLES
+    ##############################################################
+
+    st.markdown("---")
+
+    st.subheader("🏆 Top 10 Most Important Features")
+
+    st.dataframe(
+
+        importance.head(10),
 
         use_container_width=True
 
@@ -331,11 +342,7 @@ importance = importance.sort_values(
     # PIE CHART
     ##############################################################
 
-    st.markdown("---")
-
-    st.subheader("🥧 SHAP Contribution")
-
-    fig2 = px.pie(
+    fig_pie = px.pie(
 
         importance.head(10),
 
@@ -345,11 +352,13 @@ importance = importance.sort_values(
 
         hole=0.45,
 
-        color_discrete_sequence=px.colors.qualitative.Set3
+        color_discrete_sequence=px.colors.qualitative.Set2
 
     )
 
-    fig2.update_layout(
+    fig_pie.update_layout(
+
+        title="Top Feature Contribution",
 
         height=500
 
@@ -357,27 +366,9 @@ importance = importance.sort_values(
 
     st.plotly_chart(
 
-        fig2,
+        fig_pie,
 
         use_container_width=True
-
-    )
-
-    ##############################################################
-    # TOP FEATURE
-    ##############################################################
-
-    st.success(
-
-        f"""
-Most influential feature :
-
-**{importance.iloc[0]['Feature']}**
-
-Mean SHAP Value :
-
-**{importance.iloc[0]['Mean_SHAP']:.5f}**
-"""
 
     )
         ##############################################################
@@ -385,36 +376,25 @@ Mean SHAP Value :
     ##############################################################
 
     st.markdown("---")
-    st.subheader("🔍 Local Explainability")
-
-    st.write("""
-Pilih satu observasi untuk melihat kontribusi masing-masing
-variabel iklim terhadap hasil prediksi model.
-""")
-
-    ##############################################################
-    # SELECT OBSERVATION
-    ##############################################################
+    st.subheader("🔍 Local Prediction Explanation")
 
     idx = st.slider(
 
-        "Observation Index",
+        "Select Observation",
 
         min_value=0,
 
         max_value=len(X)-1,
 
-        value=0,
-
-        step=1
+        value=0
 
     )
 
     ##############################################################
-    # DATA OBSERVATION
+    # SELECTED DATA
     ##############################################################
 
-    st.markdown("### 📋 Selected Climate Data")
+    st.markdown("### Selected Observation")
 
     st.dataframe(
 
@@ -427,197 +407,98 @@ variabel iklim terhadap hasil prediksi model.
     )
 
     ##############################################################
-    # PREDICTION
+    # MODEL PREDICTION
     ##############################################################
 
-    try:
+    pred = model.predict(X.iloc[[idx]])[0]
 
-        prediction = model.predict(
+    prob = model.predict_proba(X.iloc[[idx]])[0]
 
-            X.iloc[[idx]]
+    label = encoder.inverse_transform([pred])[0]
 
-        )[0]
-
-        probability = model.predict_proba(
-
-            X.iloc[[idx]]
-
-        )[0]
-
-        predicted_label = model_file["encoder"].inverse_transform(
-
-            [prediction]
-
-        )[0]
-
-        st.success(
-
-            f"Predicted Class : **{predicted_label}**"
-
-        )
-
-    except Exception:
-
-        st.info(
-
-            "Model tidak memiliki encoder."
-
-        )
-
-        probability = None
+    st.success(f"Predicted Class : **{label}**")
 
     ##############################################################
     # PROBABILITY
     ##############################################################
 
-    if probability is not None:
+    prob_df = pd.DataFrame({
 
-        prob_df = pd.DataFrame(
+        "Class": encoder.classes_,
 
-            {
+        "Probability": prob
 
-                "Class":
+    })
 
-                    model_file["encoder"].classes_,
+    fig_prob = px.bar(
 
-                "Probability":
+        prob_df,
 
-                    probability
+        x="Class",
 
-            }
+        y="Probability",
 
-        )
+        color="Probability",
 
-        fig_prob = px.bar(
+        color_continuous_scale="Viridis",
 
-            prob_df,
-
-            x="Class",
-
-            y="Probability",
-
-            color="Probability",
-
-            color_continuous_scale="Viridis",
-
-            text_auto=".2f"
-
-        )
-
-        fig_prob.update_layout(
-
-            height=400,
-
-            title="Prediction Probability"
-
-        )
-
-        st.plotly_chart(
-
-            fig_prob,
-
-            use_container_width=True
-
-        )
-
-    ##############################################################
-    # WATERFALL PLOT
-    ##############################################################
-
-   shap.plots.waterfall(
-
-    shap_plot[idx],
-
-    show=False
-
-)
-    ##############################################################
-    # LOCAL FEATURE CONTRIBUTION
-    ##############################################################
-
-    st.markdown("---")
-
-    st.subheader("📈 Local Feature Contribution")
-
-    local_df = pd.DataFrame(
-
-        {
-
-            "Feature":
-
-                feature_columns,
-
-            "Contribution":
-
-                shap_matrix[idx]
-
-        }
+        text_auto=".3f"
 
     )
 
-    local_df = local_df.sort_values(
+    fig_prob.update_layout(
 
-        "Contribution",
+        title="Prediction Probability",
 
-        key=np.abs,
-
-        ascending=False
-
-    )
-
-    st.dataframe(
-
-        local_df,
-
-        use_container_width=True,
-
-        hide_index=True
-
-    )
-
-    ##############################################################
-    # BAR CHART
-    ##############################################################
-
-    fig_local = px.bar(
-
-        local_df,
-
-        x="Contribution",
-
-        y="Feature",
-
-        orientation="h",
-
-        color="Contribution",
-
-        color_continuous_scale="RdBu"
-
-    )
-
-    fig_local.update_layout(
-
-        height=600,
-
-        title="Local SHAP Contribution"
+        height=450
 
     )
 
     st.plotly_chart(
 
-        fig_local,
+        fig_prob,
 
         use_container_width=True
 
     )
-        ##############################################################
-    # SHAP DEPENDENCE PLOT
+
+    ##############################################################
+    # WATERFALL
     ##############################################################
 
     st.markdown("---")
-    st.subheader("📉 SHAP Dependence Plot")
+    st.subheader("💧 SHAP Waterfall Plot")
 
-    selected_feature = st.selectbox(
+    try:
+
+        fig_water = plt.figure(figsize=(9,7))
+
+        shap.plots.waterfall(
+
+            shap_plot[idx],
+
+            max_display=15,
+
+            show=False
+
+        )
+
+        st.pyplot(fig_water)
+
+        plt.close()
+
+    except Exception as e:
+
+        st.warning(f"Waterfall Plot tidak tersedia : {e}")
+            ##############################################################
+    # DEPENDENCE PLOT
+    ##############################################################
+
+    st.markdown("---")
+
+    st.subheader("📉 SHAP Dependence Analysis")
+
+    feature = st.selectbox(
 
         "Select Feature",
 
@@ -627,7 +508,7 @@ variabel iklim terhadap hasil prediksi model.
 
     )
 
-    feature_index = feature_columns.index(selected_feature)
+    feature_index = feature_columns.index(feature)
 
     ##############################################################
     # DEPENDENCE SCATTER
@@ -635,7 +516,7 @@ variabel iklim terhadap hasil prediksi model.
 
     dep_df = pd.DataFrame({
 
-        "Feature Value": X[selected_feature],
+        "Feature Value": X[feature],
 
         "SHAP Value": shap_matrix[:, feature_index]
 
@@ -651,9 +532,7 @@ variabel iklim terhadap hasil prediksi model.
 
         color="SHAP Value",
 
-        color_continuous_scale="Viridis",
-
-        trendline="ols",
+        color_continuous_scale="Turbo",
 
         opacity=0.75
 
@@ -661,7 +540,7 @@ variabel iklim terhadap hasil prediksi model.
 
     fig_dep.update_layout(
 
-        title=f"SHAP Dependence Plot - {selected_feature}",
+        title=f"Dependence Plot : {feature}",
 
         height=550
 
@@ -687,7 +566,7 @@ variabel iklim terhadap hasil prediksi model.
 
         X,
 
-        x=selected_feature,
+        x=feature,
 
         nbins=30,
 
@@ -717,7 +596,7 @@ variabel iklim terhadap hasil prediksi model.
 
     st.subheader("📋 Feature Statistics")
 
-    stat = pd.DataFrame({
+    stats = pd.DataFrame({
 
         "Statistic":[
 
@@ -729,21 +608,21 @@ variabel iklim terhadap hasil prediksi model.
 
             "Maximum",
 
-            "Standard Deviation"
+            "Std"
 
         ],
 
         "Value":[
 
-            X[selected_feature].mean(),
+            X[feature].mean(),
 
-            X[selected_feature].median(),
+            X[feature].median(),
 
-            X[selected_feature].min(),
+            X[feature].min(),
 
-            X[selected_feature].max(),
+            X[feature].max(),
 
-            X[selected_feature].std()
+            X[feature].std()
 
         ]
 
@@ -751,7 +630,7 @@ variabel iklim terhadap hasil prediksi model.
 
     st.dataframe(
 
-        stat,
+        stats,
 
         use_container_width=True,
 
@@ -760,191 +639,145 @@ variabel iklim terhadap hasil prediksi model.
     )
 
     ##############################################################
-    # CORRELATION WITH SHAP
+    # LOCAL CONTRIBUTION
     ##############################################################
 
     st.markdown("---")
 
-    st.subheader("📈 Correlation Between Feature and SHAP")
+    st.subheader("🎯 Local Feature Contribution")
 
-    corr = np.corrcoef(
+    local_df = pd.DataFrame({
 
-        X[selected_feature],
+        "Feature": feature_columns,
 
-        shap_matrix[:, feature_index]
-
-    )[0,1]
-
-    c1, c2 = st.columns(2)
-
-    c1.metric(
-
-        "Correlation",
-
-        f"{corr:.3f}"
-
-    )
-
-    c2.metric(
-
-        "Mean |SHAP|",
-
-        f"{np.abs(shap_matrix[:, feature_index]).mean():.4f}"
-
-    )
-
-    ##############################################################
-    # SENSITIVITY ANALYSIS
-    ##############################################################
-
-    st.markdown("---")
-
-    st.subheader("🎯 Sensitivity Analysis")
-
-    sensitivity = pd.DataFrame({
-
-        "Feature Value": X[selected_feature],
-
-        "Absolute SHAP": np.abs(
-
-            shap_matrix[:, feature_index]
-
-        )
+        "Contribution": shap_matrix[idx]
 
     })
 
-    fig_sens = px.scatter(
+    local_df = local_df.sort_values(
 
-        sensitivity,
+        "Contribution",
 
-        x="Feature Value",
+        key=np.abs,
 
-        y="Absolute SHAP",
-
-        color="Absolute SHAP",
-
-        color_continuous_scale="Turbo",
-
-        opacity=0.75
+        ascending=False
 
     )
 
-    fig_sens.update_layout(
+    st.dataframe(
 
-        height=500,
+        local_df,
 
-        title=f"Sensitivity of {selected_feature}"
+        use_container_width=True,
+
+        hide_index=True
+
+    )
+
+    ##############################################################
+    # BAR
+    ##############################################################
+
+    fig_local = px.bar(
+
+        local_df,
+
+        x="Contribution",
+
+        y="Feature",
+
+        orientation="h",
+
+        color="Contribution",
+
+        color_continuous_scale="RdBu"
+
+    )
+
+    fig_local.update_layout(
+
+        title="Local SHAP Contribution",
+
+        height=600
 
     )
 
     st.plotly_chart(
 
-        fig_sens,
+        fig_local,
 
         use_container_width=True
 
     )
 
     ##############################################################
-    # INTERPRETATION
+    # CORRELATION
     ##############################################################
 
-    st.markdown("---")
+    corr = np.corrcoef(
 
-    st.success(f"""
+        X[feature],
 
-### 🔎 Interpretation
+        shap_matrix[:, feature_index]
 
-Selected Feature :
+    )[0,1]
 
-**{selected_feature}**
+    st.info(
 
-Correlation between feature value and SHAP value :
+        f"Correlation between **{feature}** and SHAP value = **{corr:.3f}**"
 
-**{corr:.3f}**
-
-Average absolute SHAP contribution :
-
-**{np.abs(shap_matrix[:, feature_index]).mean():.5f}**
-
-Semakin besar nilai absolut SHAP,
-semakin besar kontribusi variabel tersebut
-terhadap prediksi model.
-
-""")
+    )
         ##############################################################
-    # DOWNLOAD SHAP FEATURE IMPORTANCE
+    # EXPLAINABILITY DASHBOARD
     ##############################################################
 
     st.markdown("---")
 
-    st.subheader("📥 Download Results")
-
-    csv_importance = importance.to_csv(index=False)
-
-    st.download_button(
-
-        label="📥 Download SHAP Feature Importance",
-
-        data=csv_importance,
-
-        file_name="shap_feature_importance.csv",
-
-        mime="text/csv"
-
-    )
-
-    ##############################################################
-    # DOWNLOAD LOCAL EXPLANATION
-    ##############################################################
-
-    csv_local = local_df.to_csv(index=False)
-
-    st.download_button(
-
-        label="📥 Download Local Explanation",
-
-        data=csv_local,
-
-        file_name=f"local_explanation_{idx}.csv",
-
-        mime="text/csv"
-
-    )
-
-    ##############################################################
-    # TOP 5 FEATURES
-    ##############################################################
-
-    st.markdown("---")
-
-    st.subheader("🏆 Top 5 Most Influential Variables")
-
-    top5 = importance.head(5)
-
-    st.dataframe(
-
-        top5,
-
-        use_container_width=True,
-
-        hide_index=True
-
-    )
+    st.subheader("🎯 Explainability Dashboard")
 
     ##############################################################
     # EXPLAINABILITY SCORE
     ##############################################################
 
-    explainability_score = float(
+    explainability_score = np.mean(np.abs(shap_matrix))
 
-        importance["Mean_SHAP"].mean()
+    c1, c2, c3, c4 = st.columns(4)
+
+    c1.metric(
+
+        "Observations",
+
+        len(X)
 
     )
 
-    st.markdown("---")
+    c2.metric(
 
-    st.subheader("🎯 Explainability Score")
+        "Features",
+
+        len(feature_columns)
+
+    )
+
+    c3.metric(
+
+        "Top Feature",
+
+        importance.iloc[0]["Feature"]
+
+    )
+
+    c4.metric(
+
+        "Explainability",
+
+        f"{explainability_score:.4f}"
+
+    )
+
+    ##############################################################
+    # GAUGE
+    ##############################################################
 
     gauge = go.Figure(
 
@@ -997,105 +830,92 @@ terhadap prediksi model.
     )
 
     ##############################################################
-    # SUMMARY DASHBOARD
+    # SUMMARY
     ##############################################################
 
     st.markdown("---")
 
-    st.subheader("📊 Explainable AI Summary")
-
-    c1,c2,c3 = st.columns(3)
-
-    c1.metric(
-
-        "Observations",
-
-        len(X)
-
-    )
-
-    c2.metric(
-
-        "Features",
-
-        len(feature_columns)
-
-    )
-
-    c3.metric(
-
-        "Mean SHAP",
-
-        f"{importance['Mean_SHAP'].mean():.5f}"
-
-    )
-
-    ##############################################################
-    # INTERPRETATION
-    ##############################################################
-
     st.success(f"""
 
-### 🧠 Explainable AI Report
+### Explainable AI Summary
 
-Model berhasil dijelaskan menggunakan **SHAP (SHapley Additive Explanations)**.
+Model berhasil dijelaskan menggunakan SHAP.
 
-**Jumlah Observasi :**
+Jumlah Observasi :
 {len(X)}
 
-**Jumlah Variabel :**
+Jumlah Variabel :
 {len(feature_columns)}
 
-**Top Feature :**
-{importance.iloc[0]['Feature']}
+Variabel paling penting :
+**{importance.iloc[0]['Feature']}**
 
-**Mean SHAP :**
-{importance.iloc[0]['Mean_SHAP']:.5f}
+Nilai Mean SHAP :
+**{importance.iloc[0]['Mean_SHAP']:.5f}**
 
-**Explainability Score :**
-{explainability_score:.5f}
+Explainability Score :
+**{explainability_score:.5f}**
 
-Interpretasi:
+Interpretasi :
 
-• Nilai SHAP positif meningkatkan peluang kelas yang diprediksi.
+• Nilai SHAP positif meningkatkan peluang prediksi.
 
-• Nilai SHAP negatif menurunkan peluang kelas yang diprediksi.
+• Nilai SHAP negatif menurunkan peluang prediksi.
 
-• Semakin besar |SHAP| maka semakin besar kontribusi variabel terhadap keputusan model.
-
-Dashboard ini kompatibel dengan:
-
-✅ XGBoost 2.x
-
-✅ SHAP 0.47+
-
-✅ Streamlit Cloud
+• Semakin besar |SHAP| semakin besar kontribusi variabel.
 
 """)
+        ##############################################################
+    # DOWNLOAD
+    ##############################################################
+
+    st.markdown("---")
+
+    st.subheader("📥 Export Explainable AI")
 
     ##############################################################
-    # EXPORT COMPLETE REPORT
+    # SHAP IMPORTANCE
     ##############################################################
 
-    report = pd.concat(
+    csv_importance = importance.to_csv(index=False)
 
-        [
+    st.download_button(
 
-            importance,
+        "📥 Download SHAP Importance",
 
-            pd.DataFrame({
+        csv_importance,
 
-                "Feature":["Explainability Score"],
+        file_name="shap_importance.csv",
 
-                "Mean_SHAP":[explainability_score]
-
-            })
-
-        ],
-
-        ignore_index=True
+        mime="text/csv"
 
     )
+
+    ##############################################################
+    # LOCAL EXPLANATION
+    ##############################################################
+
+    csv_local = local_df.to_csv(index=False)
+
+    st.download_button(
+
+        "📥 Download Local Explanation",
+
+        csv_local,
+
+        file_name="local_explanation.csv",
+
+        mime="text/csv"
+
+    )
+
+    ##############################################################
+    # COMPLETE REPORT
+    ##############################################################
+
+    report = importance.copy()
+
+    report["Explainability_Score"] = explainability_score
 
     st.download_button(
 
@@ -1108,3 +928,37 @@ Dashboard ini kompatibel dengan:
         mime="text/csv"
 
     )
+
+    ##############################################################
+    # FOOTER
+    ##############################################################
+
+    st.markdown("---")
+
+    st.caption("""
+
+🧠 Explainable Artificial Intelligence Dashboard
+
+Machine Learning : XGBoost
+
+Explanation Method : SHAP (SHapley Additive Explanations)
+
+Developed by
+
+**Melly Ariska**
+
+Physics Education
+
+Universitas Sriwijaya
+
+2026
+
+Compatible with
+
+✔ XGBoost 2.x
+
+✔ SHAP 0.47+
+
+✔ Streamlit Cloud
+
+""")
