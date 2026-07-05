@@ -1,914 +1,730 @@
 ##############################################################
 # modules/prediction_dashboard.py
+# Prediction Dashboard
 ##############################################################
+
+import os
+import joblib
+import numpy as np
+import pandas as pd
 
 import streamlit as st
-import pandas as pd
-import numpy as np
-import joblib
-import plotly.graph_objects as go
 import plotly.express as px
-##############################################################
+import plotly.graph_objects as go
+
 
 ##############################################################
-# EARLY WARNING ENGINE
-##############################################################
-
-def calculate_climate_risk(
-
-    rainfall,
-    temperature,
-    humidity,
-    spi,
-    enso,
-    iod
-
-):
-
-    score = 0
-
-    ##########################################################
-    # Rainfall
-    ##########################################################
-
-    if rainfall >= 250:
-
-        score += 30
-
-    elif rainfall >= 180:
-
-        score += 20
-
-    elif rainfall >= 120:
-
-        score += 10
-
-    ##########################################################
-    # Temperature
-    ##########################################################
-
-    if temperature >= 35:
-
-        score += 20
-
-    elif temperature >= 33:
-
-        score += 10
-
-    ##########################################################
-    # Humidity
-    ##########################################################
-
-    if humidity >= 90:
-
-        score += 15
-
-    elif humidity <= 60:
-
-        score += 10
-
-    ##########################################################
-    # SPI
-    ##########################################################
-
-    if spi >= 2:
-
-        score += 20
-
-    elif spi <= -2:
-
-        score += 20
-
-    ##########################################################
-    # ENSO
-    ##########################################################
-
-    if abs(enso) >= 1.5:
-
-        score += 10
-
-    ##########################################################
-    # IOD
-    ##########################################################
-
-    if abs(iod) >= 1.0:
-
-        score += 5
-
-    return min(score,100)
-
-# MAIN
+# MAIN FUNCTION
 ##############################################################
 
 def prediction_dashboard():
 
-    st.header("🌦 Extreme Climate Prediction")
+    st.header("🔮 Climate Disaster Prediction")
 
     st.markdown("""
-Masukkan parameter iklim kemudian tekan tombol
-**Predict** untuk mengetahui prediksi kondisi
-iklim ekstrem menggunakan model XGBoost.
+Prediksi jenis bencana iklim menggunakan model
+**XGBoost Machine Learning** yang telah dilatih.
+
+Masukkan parameter iklim kemudian klik tombol
+**Predict Disaster**.
 """)
 
-    ##########################################################
+    ##############################################################
     # LOAD MODEL
-    ##########################################################
+    ##############################################################
 
-    model_file = joblib.load(
+    model_path = "models/xgboost.pkl"
 
-        "models/xgboost.pkl"
+    if not os.path.exists(model_path):
 
-    )
+        st.error("Model XGBoost belum tersedia.")
+
+        st.info("Silakan buka menu **XGBoost** dan lakukan training model terlebih dahulu.")
+
+        return
+
+    model_file = joblib.load(model_path)
 
     model = model_file["model"]
 
     encoder = model_file["encoder"]
 
-    ##########################################################
-    # INPUT
-    ##########################################################
+    feature_columns = model_file["features"]
 
-    c1,c2,c3 = st.columns(3)
+    st.success("✅ Model berhasil dimuat.")
 
-    with c1:
+    st.write("Jumlah Feature :", len(feature_columns))
+        ##############################################################
+    # INPUT CLIMATE VARIABLES
+    ##############################################################
+
+    st.markdown("---")
+    st.subheader("🌦 Climate Variables")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
 
         rainfall = st.number_input(
-
             "Rainfall (mm)",
-
-            0.0,
-
-            600.0,
-
-            180.0
-
+            value=120.0
         )
 
         tmax = st.number_input(
-
-            "Maximum Temperature",
-
-            20.0,
-
-            45.0,
-
-            32.0
-
+            "Maximum Temperature (°C)",
+            value=31.0
         )
 
         tmin = st.number_input(
-
-            "Minimum Temperature",
-
-            10.0,
-
-            35.0,
-
-            24.0
-
+            "Minimum Temperature (°C)",
+            value=24.0
         )
 
-        humidity = st.slider(
-
-            "Humidity",
-
-            20,
-
-            100,
-
-            80
-
+        humidity = st.number_input(
+            "Humidity (%)",
+            value=82.0
         )
-
-    ##########################################################
-
-    with c2:
 
         pressure = st.number_input(
-
-            "Pressure",
-
-            980.0,
-
-            1035.0,
-
-            1008.0
-
+            "Pressure (hPa)",
+            value=1010.0
         )
 
         wind = st.number_input(
-
-            "Wind",
-
-            0.0,
-
-            15.0,
-
-            2.5
-
+            "Wind Speed (m/s)",
+            value=3.5
         )
+
+    with col2:
 
         solar = st.number_input(
-
             "Solar Radiation",
-
-            0.0,
-
-            12.0,
-
-            7.0
-
+            value=220.0
         )
 
-        enso = st.slider(
-
-            "ENSO",
-
-            -3.0,
-
-            3.0,
-
-            0.0
-
+        enso = st.number_input(
+            "ENSO Index",
+            value=0.20
         )
 
-    ##########################################################
-
-    with c3:
-
-        iod = st.slider(
-
-            "IOD",
-
-            -3.0,
-
-            3.0,
-
-            0.0
-
+        iod = st.number_input(
+            "IOD Index",
+            value=0.10
         )
 
-        ndvi = st.slider(
-
+        ndvi = st.number_input(
             "NDVI",
-
-            0.0,
-
-            1.0,
-
-            0.70
-
+            value=0.65
         )
 
-        spi = st.slider(
-
+        spi = st.number_input(
             "SPI",
-
-            -3.0,
-
-            3.0,
-
-            0.0
-
+            value=-0.50
         )
 
-    ##########################################################
-    # DATAFRAME
-    ##########################################################
+    ##############################################################
+    # BUILD INPUT DATAFRAME
+    ##############################################################
 
-    X = pd.DataFrame(
+    input_data = pd.DataFrame({
 
-        {
+        "Rainfall":[rainfall],
+        "Tmax":[tmax],
+        "Tmin":[tmin],
+        "Humidity":[humidity],
+        "Pressure":[pressure],
+        "Wind":[wind],
+        "Solar":[solar],
+        "ENSO":[enso],
+        "IOD":[iod],
+        "NDVI":[ndvi],
+        "SPI":[spi]
 
-            "Rainfall":[rainfall],
+    })
 
-            "Tmax":[tmax],
+    st.markdown("---")
 
-            "Tmin":[tmin],
+    st.subheader("📋 Input Data")
 
-            "Humidity":[humidity],
+    st.dataframe(
 
-            "Pressure":[pressure],
+        input_data,
 
-            "Wind":[wind],
+        use_container_width=True,
 
-            "Solar":[solar],
-
-            "ENSO":[enso],
-
-            "IOD":[iod],
-
-            "NDVI":[ndvi],
-
-            "SPI":[spi]
-
-        }
+        hide_index=True
 
     )
+        ##############################################################
+    # PREDICT BUTTON
+    ##############################################################
 
-    ##########################################################
-    # BUTTON
-    ##########################################################
+    st.markdown("---")
 
     predict = st.button(
 
-        "🚀 Predict Extreme Climate"
+        "🚀 Predict Disaster",
+
+        use_container_width=True
 
     )
 
-    ##########################################################
-    # PREDICTION
-    ##########################################################
+    if not predict:
 
-    if predict:
+        st.info(
 
-        pred = model.predict(X)
-
-        prob = model.predict_proba(X)
-
-        label = encoder.inverse_transform(pred)[0]
-
-        ##############################################################
-# CLIMATE RISK INDEX
-##############################################################
-
-risk = calculate_climate_risk(
-
-    rainfall,
-
-    tmax,
-
-    humidity,
-
-    spi,
-
-    enso,
-
-    iod
-
-)
-
-st.markdown("---")
-
-        st.subheader("Prediction Result")
-
-        st.success(
-
-            f"Predicted Class : **{label}**"
+            "Klik tombol **Predict Disaster** untuk menjalankan model."
 
         )
 
-        ######################################################
-        # Probability
-        ######################################################
+        return
 
-        probability = pd.DataFrame(
+    ##############################################################
+    # PREDICTION
+    ##############################################################
 
-            {
+    with st.spinner("Running XGBoost Prediction..."):
 
-                "Class":encoder.classes_,
+        prediction = model.predict(input_data)
 
-                "Probability":prob[0]
+        probability = model.predict_proba(input_data)
+
+    ##############################################################
+    # DECODE LABEL
+    ##############################################################
+
+    predicted_class = encoder.inverse_transform(prediction)[0]
+
+    probability = probability[0]
+
+    st.success("✅ Prediction Completed Successfully")
+        ##############################################################
+    # PREDICTION RESULT
+    ##############################################################
+
+    st.markdown("---")
+
+    st.subheader("🎯 Prediction Result")
+
+    st.metric(
+
+        "Predicted Disaster",
+
+        predicted_class
+
+    )
+
+    ##############################################################
+    # PROBABILITY TABLE
+    ##############################################################
+
+    probability_df = pd.DataFrame({
+
+        "Disaster": encoder.classes_,
+
+        "Probability": probability
+
+    })
+
+    probability_df["Probability (%)"] = (
+
+        probability_df["Probability"] * 100
+
+    ).round(2)
+
+    probability_df = probability_df.sort_values(
+
+        "Probability",
+
+        ascending=False
+
+    )
+
+    st.subheader("📊 Prediction Probability")
+
+    st.dataframe(
+
+        probability_df,
+
+        use_container_width=True,
+
+        hide_index=True
+
+    )
+
+    ##############################################################
+    # BAR CHART
+    ##############################################################
+
+    fig_bar = px.bar(
+
+        probability_df,
+
+        x="Probability (%)",
+
+        y="Disaster",
+
+        orientation="h",
+
+        color="Probability (%)",
+
+        color_continuous_scale="Turbo",
+
+        text="Probability (%)"
+
+    )
+
+    fig_bar.update_layout(
+
+        title="Prediction Probability",
+
+        height=500
+
+    )
+
+    st.plotly_chart(
+
+        fig_bar,
+
+        use_container_width=True
+
+    )
+
+    ##############################################################
+    # PIE CHART
+    ##############################################################
+
+    fig_pie = px.pie(
+
+        probability_df,
+
+        names="Disaster",
+
+        values="Probability (%)",
+
+        hole=0.45,
+
+        color_discrete_sequence=px.colors.qualitative.Set2
+
+    )
+
+    fig_pie.update_layout(
+
+        title="Probability Distribution",
+
+        height=500
+
+    )
+
+    st.plotly_chart(
+
+        fig_pie,
+
+        use_container_width=True
+
+    )
+        ##############################################################
+    # RISK LEVEL
+    ##############################################################
+
+    st.markdown("---")
+    st.subheader("🚨 Disaster Risk Level")
+
+    risk = float(probability.max() * 100)
+
+    if risk < 40:
+
+        level = "LOW"
+        color = "green"
+
+    elif risk < 70:
+
+        level = "MODERATE"
+        color = "orange"
+
+    else:
+
+        level = "HIGH"
+        color = "red"
+
+    ##############################################################
+    # KPI
+    ##############################################################
+
+    c1, c2 = st.columns(2)
+
+    c1.metric(
+
+        "Risk Level",
+
+        level
+
+    )
+
+    c2.metric(
+
+        "Highest Probability",
+
+        f"{risk:.2f}%"
+
+    )
+
+    ##############################################################
+    # GAUGE
+    ##############################################################
+
+    gauge = go.Figure(
+
+        go.Indicator(
+
+            mode="gauge+number",
+
+            value=risk,
+
+            title={"text":"Disaster Risk (%)"},
+
+            gauge={
+
+                "axis":{"range":[0,100]},
+
+                "bar":{"color":"royalblue"},
+
+                "steps":[
+
+                    {"range":[0,40],"color":"#b6d7a8"},
+
+                    {"range":[40,70],"color":"#ffe599"},
+
+                    {"range":[70,100],"color":"#f4cccc"}
+
+                ]
 
             }
 
         )
 
-        st.dataframe(
+    )
 
-            probability,
+    gauge.update_layout(
 
-            use_container_width=True
-
-        )
-
-        ######################################################
-        # Highest Probability
-        ######################################################
-
-        best = probability.loc[
-
-            probability["Probability"].idxmax()
-
-        ]
-
-        st.metric(
-
-            "Confidence",
-
-            f"{best['Probability']*100:.2f}%"
-
-        )
-
-######################################################
-# GAUGE CONFIDENCE
-######################################################
-
-import plotly.graph_objects as go
-import plotly.express as px
-
-confidence = best["Probability"] * 100
-
-gauge = go.Figure(
-
-    go.Indicator(
-
-        mode="gauge+number",
-
-        value=confidence,
-
-        title={"text":"Prediction Confidence"},
-
-        gauge={
-
-            "axis":{"range":[0,100]},
-
-            "bar":{"color":"royalblue"},
-
-            "steps":[
-
-                {"range":[0,40],"color":"#ff4d4d"},
-
-                {"range":[40,70],"color":"orange"},
-
-                {"range":[70,90],"color":"yellow"},
-
-                {"range":[90,100],"color":"green"}
-
-            ]
-
-        }
+        height=450
 
     )
 
-)
+    st.plotly_chart(
 
-gauge.update_layout(
+        gauge,
 
-    height=350
+        use_container_width=True
 
-)
+    )
+        ##############################################################
+    # RECOMMENDATION SYSTEM
+    ##############################################################
 
-st.plotly_chart(
+    st.markdown("---")
+    st.subheader("💡 Decision Support Recommendation")
 
-    gauge,
+    recommendation = {
 
-    use_container_width=True
+        "Flood":[
 
-)
+            "✔ Improve drainage systems.",
 
-######################################################
-# PROBABILITY BAR CHART
-######################################################
+            "✔ Monitor river water levels.",
 
-st.subheader("Prediction Probability")
+            "✔ Prepare flood evacuation routes.",
 
-bar = px.bar(
+            "✔ Activate Early Warning System."
 
-    probability,
+        ],
 
-    x="Class",
+        "Drought":[
 
-    y="Probability",
+            "✔ Implement water conservation.",
 
-    color="Probability",
+            "✔ Optimize irrigation scheduling.",
 
-    text="Probability",
+            "✔ Increase groundwater monitoring.",
 
-    color_continuous_scale="Turbo"
+            "✔ Encourage efficient water usage."
 
-)
+        ],
 
-bar.update_traces(
+        "Heatwave":[
 
-    texttemplate="%{text:.2f}",
+            "✔ Reduce outdoor activities.",
 
-    textposition="outside"
+            "✔ Increase drinking water consumption.",
 
-)
+            "✔ Prepare cooling shelters.",
 
-bar.update_layout(
+            "✔ Protect vulnerable populations."
 
-    height=450,
+        ],
 
-    yaxis_title="Probability",
+        "Storm":[
 
-    xaxis_title="Extreme Climate Class"
+            "✔ Monitor BMKG weather forecasts.",
 
-)
+            "✔ Secure infrastructure.",
 
-st.plotly_chart(
+            "✔ Prepare emergency response teams.",
 
-    bar,
+            "✔ Minimize marine activities."
 
-    use_container_width=True
+        ],
 
-)
+        "Normal":[
 
-######################################################
-# RISK LEVEL
-######################################################
+            "✔ Climate conditions are stable.",
 
-st.subheader("Climate Risk Level")
+            "✔ Continue routine monitoring.",
 
-if label == "Flood":
+            "✔ Maintain preparedness programs."
 
-    st.error("🔴 HIGH RISK : Flood Potential Detected")
+        ]
 
-elif label == "Heatwave":
+    }
 
-    st.error("🔴 HIGH RISK : Heatwave Potential Detected")
+    if predicted_class in recommendation:
 
-elif label == "Drought":
+        st.success(
 
-    st.warning("🟠 MEDIUM RISK : Drought Potential")
+            f"Recommended Actions for **{predicted_class}**"
 
-else:
+        )
 
-    st.success("🟢 LOW RISK : Normal Climate Condition")
+        for item in recommendation[predicted_class]:
 
-######################################################
-# MITIGATION
-######################################################
+            st.write(item)
 
-st.subheader("Mitigation Recommendation")
+    else:
 
-if label=="Flood":
+        st.info(
 
-    st.info("""
+            "No recommendation available for this prediction."
 
-✔ Monitor rainfall continuously
+        )
 
-✔ Activate flood early warning
+    ##############################################################
+    # PREDICTION SUMMARY
+    ##############################################################
 
-✔ Prepare evacuation route
+    st.markdown("---")
 
-✔ Clean drainage systems
+    summary = pd.DataFrame({
 
-✔ Monitor river water level
+        "Parameter":[
+
+            "Predicted Disaster",
+
+            "Risk Level",
+
+            "Highest Probability (%)"
+
+        ],
+
+        "Value":[
+
+            predicted_class,
+
+            level,
+
+            round(risk,2)
+
+        ]
+
+    })
+
+    st.subheader("📋 Prediction Summary")
+
+    st.dataframe(
+
+        summary,
+
+        use_container_width=True,
+
+        hide_index=True
+
+    )
+        ##############################################################
+    # DOWNLOAD RESULT
+    ##############################################################
+
+    st.markdown("---")
+    st.subheader("📥 Export Prediction Result")
+
+    ##############################################################
+    # RESULT DATAFRAME
+    ##############################################################
+
+    result_df = pd.DataFrame({
+
+        "Predicted_Disaster":[predicted_class],
+        "Risk_Level":[level],
+        "Highest_Probability(%)":[round(risk,2)]
+
+    })
+
+    ##############################################################
+    # ADD PROBABILITY
+    ##############################################################
+
+    for i, cls in enumerate(encoder.classes_):
+
+        result_df[f"Probability_{cls}"] = [
+
+            round(probability[i]*100,2)
+
+        ]
+
+    ##############################################################
+    # SHOW TABLE
+    ##############################################################
+
+    st.dataframe(
+
+        result_df,
+
+        use_container_width=True,
+
+        hide_index=True
+
+    )
+
+    ##############################################################
+    # DOWNLOAD CSV
+    ##############################################################
+
+    csv = result_df.to_csv(index=False)
+
+    st.download_button(
+
+        "📥 Download Prediction CSV",
+
+        data=csv,
+
+        file_name="prediction_result.csv",
+
+        mime="text/csv"
+
+    )
+
+    ##############################################################
+    # DOWNLOAD JSON
+    ##############################################################
+
+    json = result_df.to_json(
+
+        orient="records",
+
+        indent=4
+
+    )
+
+    st.download_button(
+
+        "📥 Download Prediction JSON",
+
+        data=json,
+
+        file_name="prediction_result.json",
+
+        mime="application/json"
+
+    )
+        ##############################################################
+    # DASHBOARD SUMMARY
+    ##############################################################
+
+    st.markdown("---")
+
+    st.subheader("📊 Prediction Dashboard Summary")
+
+    c1, c2, c3 = st.columns(3)
+
+    c1.metric(
+
+        "Predicted Disaster",
+
+        predicted_class
+
+    )
+
+    c2.metric(
+
+        "Risk Level",
+
+        level
+
+    )
+
+    c3.metric(
+
+        "Prediction Confidence",
+
+        f"{risk:.2f}%"
+
+    )
+
+    ##############################################################
+    # INTERPRETATION
+    ##############################################################
+
+    st.markdown("---")
+
+    st.success(f"""
+
+## Interpretation
+
+Model XGBoost berhasil melakukan prediksi kondisi iklim.
+
+### Prediction Result
+
+**Predicted Disaster :**
+{predicted_class}
+
+**Confidence :**
+{risk:.2f}%
+
+**Risk Level :**
+{level}
+
+### Decision Support
+
+Dashboard ini dapat digunakan sebagai sistem pendukung
+keputusan (Decision Support System) dalam mitigasi
+bencana hidrometeorologi berbasis Machine Learning.
 
 """)
 
-elif label=="Drought":
+    ##############################################################
+    # FOOTER
+    ##############################################################
 
-    st.info("""
+    st.markdown("---")
 
-✔ Optimize water management
+    st.caption("""
 
-✔ Reduce irrigation demand
+🌦 Climate Disaster Prediction Dashboard
 
-✔ Monitor groundwater
+Machine Learning Model :
+**Extreme Gradient Boosting (XGBoost)**
 
-✔ Increase water storage
+Prediction Module :
+**Decision Support System**
 
-""")
+Developed by
 
-elif label=="Heatwave":
+**Melly Ariska**
 
-    st.info("""
+Physics Education Department
 
-✔ Limit outdoor activities
+Faculty of Teacher Training and Education
 
-✔ Increase hydration
+Universitas Sriwijaya
 
-✔ Protect vulnerable groups
-
-✔ Monitor temperature continuously
-
-""")
-
-else:
-
-    st.success("""
-
-Climate condition is stable.
-
-Continue regular monitoring.
+2026
 
 """)
-
-######################################################
-# WEATHER STATUS CARD
-######################################################
-
-st.subheader("Current Climate Status")
-
-col1,col2,col3,col4 = st.columns(4)
-
-col1.metric(
-
-    "Rainfall",
-
-    f"{rainfall:.1f} mm"
-
-)
-
-col2.metric(
-
-    "Temperature",
-
-    f"{tmax:.1f} °C"
-
-)
-
-col3.metric(
-
-    "Humidity",
-
-    f"{humidity}%"
-
-)
-
-col4.metric(
-
-    "SPI",
-
-    f"{spi:.2f}"
-
-)
-
-######################################################
-# DOWNLOAD RESULT
-######################################################
-
-prediction_result = pd.DataFrame({
-
-    "Prediction":[label],
-
-    "Confidence":[confidence],
-
-    "Rainfall":[rainfall],
-
-    "Temperature":[tmax],
-
-    "Humidity":[humidity],
-
-    "Pressure":[pressure],
-
-    "Wind":[wind],
-
-    "Solar":[solar],
-
-    "ENSO":[enso],
-
-    "IOD":[iod],
-
-    "NDVI":[ndvi],
-
-    "SPI":[spi]
-
-})
-
-csv = prediction_result.to_csv(index=False)
-
-st.download_button(
-
-    "📥 Download Prediction Report",
-
-    csv,
-
-    file_name="prediction_result.csv",
-
-    mime="text/csv"
-
-)
-
-##############################################################
-# EARLY WARNING GAUGE
-##############################################################
-
-st.markdown("---")
-
-st.subheader("🚨 Climate Early Warning System")
-
-gauge = go.Figure(
-
-go.Indicator(
-
-mode="gauge+number",
-
-value=risk,
-
-title={
-
-"text":"Climate Risk Index"
-
-},
-
-gauge={
-
-"axis":{"range":[0,100]},
-
-"bar":{"color":"royalblue"},
-
-"steps":[
-
-{"range":[0,25],"color":"green"},
-
-{"range":[25,50],"color":"yellow"},
-
-{"range":[50,75],"color":"orange"},
-
-{"range":[75,100],"color":"red"}
-
-]
-
-}
-
-)
-
-)
-
-gauge.update_layout(
-
-height=350
-
-)
-
-st.plotly_chart(
-
-gauge,
-
-use_container_width=True
-)
-
-##############################################################
-# WARNING LEVEL
-##############################################################
-
-if risk >= 75:
-
-    st.error("""
-
-🔴 LEVEL IV
-
-VERY HIGH RISK
-
-Extreme climate event is very likely.
-
-Immediate mitigation is recommended.
-
-""")
-
-elif risk >= 50:
-
-    st.warning("""
-
-🟠 LEVEL III
-
-HIGH RISK
-
-Preparedness should be increased.
-
-""")
-
-elif risk >= 25:
-
-    st.info("""
-
-🟡 LEVEL II
-
-MODERATE RISK
-
-Continuous monitoring required.
-
-""")
-
-else:
-
-    st.success("""
-
-🟢 LEVEL I
-
-LOW RISK
-
-Normal climate condition.
-
-""")
-
-##############################################################
-# ALERT CARD
-##############################################################
-
-st.markdown("---")
-
-st.subheader("📢 Alert Summary")
-
-alert = pd.DataFrame(
-
-{
-
-"Indicator":[
-
-"Rainfall",
-
-"Temperature",
-
-"Humidity",
-
-"ENSO",
-
-"IOD",
-
-"SPI",
-
-"Prediction",
-
-"Risk Index"
-
-],
-
-"Value":[
-
-rainfall,
-
-tmax,
-
-humidity,
-
-enso,
-
-iod,
-
-spi,
-
-label,
-
-risk
-
-]
-
-}
-
-)
-
-st.dataframe(
-
-alert,
-
-use_container_width=True
-)
-
-##############################################################
-# MITIGATION
-##############################################################
-
-st.subheader("Recommended Action")
-
-if risk >= 75:
-
-    st.error("""
-
-✔ Activate Emergency Operation Center
-
-✔ Notify Local Government
-
-✔ Activate Early Warning System
-
-✔ Monitor River Water Level
-
-✔ Prepare Evacuation Route
-
-✔ Public Information Broadcast
-
-""")
-
-elif risk >= 50:
-
-    st.warning("""
-
-✔ Increase Monitoring Frequency
-
-✔ Coordinate with BPBD
-
-✔ Prepare Emergency Logistics
-
-✔ Inspect Critical Infrastructure
-
-""")
-
-elif risk >=25:
-
-    st.info("""
-
-✔ Continue Weather Monitoring
-
-✔ Disseminate Weather Information
-
-✔ Update Climate Dashboard
-
-""")
-
-else:
-
-    st.success("""
-
-✔ Continue Routine Monitoring
-
-✔ No Immediate Action Required
-
-""")
-
-######################################################
-# END
-######################################################
