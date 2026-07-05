@@ -1,11 +1,14 @@
 ##############################################################
 # modules/xgboost.py
-# XGBoost Classification Dashboard
+# XGBoost Machine Learning Dashboard
+# Author : Melly Ariska
 ##############################################################
 
-import streamlit as st
-import pandas as pd
+import os
+import joblib
 import numpy as np
+import pandas as pd
+import streamlit as st
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -13,17 +16,17 @@ import plotly.graph_objects as go
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import precision_score
-from sklearn.metrics import recall_score
-from sklearn.metrics import f1_score
-
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import classification_report
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    confusion_matrix,
+    classification_report
+)
 
 from xgboost import XGBClassifier
 
-import joblib
 
 ##############################################################
 # MAIN FUNCTION
@@ -31,17 +34,16 @@ import joblib
 
 def xgboost_dashboard(df):
 
-    st.header("🚀 Extreme Gradient Boosting (XGBoost)")
+    st.header("🚀 XGBoost Machine Learning")
 
     st.markdown("""
-XGBoost digunakan untuk memprediksi kejadian iklim ekstrem
-menggunakan data Climate Big Data yang telah diintegrasikan
-melalui Climate Big Data Integration Framework (CBDIF).
+Dashboard ini digunakan untuk melakukan klasifikasi
+kejadian iklim ekstrem menggunakan algoritma
+Extreme Gradient Boosting (XGBoost).
 """)
-
-    ##########################################################
-    # Feature Selection
-    ##########################################################
+        ##############################################################
+    # FEATURE
+    ##############################################################
 
     feature_columns = [
 
@@ -59,745 +61,729 @@ melalui Climate Big Data Integration Framework (CBDIF).
 
     ]
 
-    target = "Disaster"
+    ##############################################################
+    # PREPROCESSING
+    ##############################################################
 
-    ##########################################################
-    # Dataset
-    ##########################################################
+    X = df[feature_columns].copy()
 
-    X = df[feature_columns]
+    for col in feature_columns:
+        X[col] = pd.to_numeric(
+            X[col],
+            errors="coerce"
+        )
 
-    y = df[target]
+    df["Disaster"] = (
+        df["Disaster"]
+        .fillna("Normal")
+        .astype(str)
+        .str.strip()
+    )
 
-    ##########################################################
-    # Encode Target
-    ##########################################################
+    y = df["Disaster"]
+
+    data = pd.concat([X, y], axis=1)
+
+    data = data.dropna().reset_index(drop=True)
+
+    X = data[feature_columns]
+
+    y = data["Disaster"]
 
     encoder = LabelEncoder()
 
     y = encoder.fit_transform(y)
 
-    ##########################################################
-    # Sidebar Hyperparameter
-    ##########################################################
+    st.success(
+        f"Dataset siap digunakan ({len(data)} observasi)"
+    )
+        ##############################################################
+    # HYPERPARAMETER
+    ##############################################################
 
+    st.markdown("---")
     st.subheader("⚙ Hyperparameter")
 
-    c1, c2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
-    with c1:
+    with col1:
 
         n_estimators = st.slider(
-
             "Number of Trees",
-
-            50,
-
-            500,
-
-            200,
-
+            min_value=50,
+            max_value=500,
+            value=200,
             step=10
-
         )
 
         max_depth = st.slider(
-
             "Maximum Depth",
-
-            2,
-
-            15,
-
-            6
-
+            min_value=2,
+            max_value=15,
+            value=6
         )
 
-    with c2:
+    with col2:
 
         learning_rate = st.slider(
-
             "Learning Rate",
-
-            0.01,
-
-            0.50,
-
-            0.10,
-
+            min_value=0.01,
+            max_value=0.50,
+            value=0.10,
             step=0.01
-
         )
 
         subsample = st.slider(
-
             "Subsample",
-
-            0.50,
-
-            1.00,
-
-            0.80,
-
+            min_value=0.50,
+            max_value=1.00,
+            value=0.80,
             step=0.05
+        )
+
+    ##############################################################
+    # TRAIN TEST SPLIT
+    ##############################################################
+
+    st.markdown("---")
+
+    if len(np.unique(y)) < 2:
+
+        st.error(
+            "Dataset hanya memiliki satu kelas sehingga model tidak dapat dilatih."
+        )
+
+        return
+
+    try:
+
+        X_train, X_test, y_train, y_test = train_test_split(
+
+            X,
+            y,
+
+            test_size=0.30,
+
+            random_state=42,
+
+            stratify=y
 
         )
 
-    ##########################################################
-    # Train Test Split
-    ##########################################################
+    except Exception as e:
 
-    X_train, X_test, y_train, y_test = train_test_split(
+        st.warning(
+            f"Stratified split gagal ({e}), menggunakan random split."
+        )
 
-        X,
+        X_train, X_test, y_train, y_test = train_test_split(
 
-        y,
+            X,
+            y,
 
-        test_size=0.30,
+            test_size=0.30,
 
-        random_state=42,
+            random_state=42
 
-        stratify=y
+        )
 
+    ##############################################################
+    # DATA INFORMATION
+    ##############################################################
+
+    c1, c2, c3 = st.columns(3)
+
+    c1.metric(
+        "Training Data",
+        len(X_train)
     )
 
-    ##########################################################
-    # Information
-    ##########################################################
+    c2.metric(
+        "Testing Data",
+        len(X_test)
+    )
 
-    st.info(f"""
+    c3.metric(
+        "Number of Classes",
+        len(np.unique(y))
+    )
+        ##############################################################
+    # MODEL CONFIGURATION
+    ##############################################################
 
-Training Data : {len(X_train)}
-
-Testing Data : {len(X_test)}
-
-Features : {len(feature_columns)}
-
-Classes : {len(np.unique(y))}
-
-""")
-
-    ##########################################################
-    # Model Configuration
-    ##########################################################
+    st.markdown("---")
+    st.subheader("🚀 XGBoost Training")
 
     model = XGBClassifier(
 
-        objective="multi:softmax",
+        objective="multi:softprob",
 
         num_class=len(np.unique(y)),
 
         n_estimators=n_estimators,
 
-        learning_rate=learning_rate,
-
         max_depth=max_depth,
+
+        learning_rate=learning_rate,
 
         subsample=subsample,
 
+        colsample_bytree=0.80,
+
         random_state=42,
 
-        eval_metric="mlogloss"
+        eval_metric="mlogloss",
+
+        n_jobs=-1
 
     )
 
-    ##########################################################
-    # Tombol Training
-    ##########################################################
+    ##############################################################
+    # TRAIN BUTTON
+    ##############################################################
 
-    train = st.button("🚀 Train XGBoost Model")
+    train = st.button(
+        "🚀 Train XGBoost Model",
+        use_container_width=True
+    )
 
-    if train:
+    if not train:
 
-        with st.spinner("Training XGBoost Model ..."):
+        st.info(
+            "Klik tombol **Train XGBoost Model** untuk memulai proses training."
+        )
 
-            model.fit(
+        return
 
-                X_train,
+    ##############################################################
+    # TRAINING
+    ##############################################################
 
-                y_train
+    with st.spinner("Training XGBoost Model..."):
 
-            )
-####################################################
-# CONFUSION MATRIX
-####################################################
+        model.fit(
 
-st.markdown("---")
+            X_train,
 
-st.subheader("Confusion Matrix")
+            y_train
 
-cm = confusion_matrix(
+        )
 
-    y_test,
+    st.success("✅ Training selesai.")
 
-    pred
+    ##############################################################
+    # PREDICTION
+    ##############################################################
 
-)
+    pred = model.predict(X_test)
 
-cm_df = pd.DataFrame(
+    prob = model.predict_proba(X_test)
 
-    cm,
+    ##############################################################
+    # PERFORMANCE
+    ##############################################################
 
-    index=encoder.classes_,
+    acc = accuracy_score(
 
-    columns=encoder.classes_
+        y_test,
 
-)
+        pred
 
-fig = px.imshow(
+    )
 
-    cm_df,
+    precision = precision_score(
 
-    text_auto=True,
+        y_test,
 
-    color_continuous_scale="Blues",
+        pred,
 
-    aspect="auto"
+        average="weighted",
 
-)
+        zero_division=0
 
-fig.update_layout(
+    )
 
-    height=600,
+    recall = recall_score(
 
-    title="Confusion Matrix"
+        y_test,
 
-)
+        pred,
 
-st.plotly_chart(
+        average="weighted",
 
-    fig,
+        zero_division=0
 
-    use_container_width=True
+    )
 
-)
+    f1 = f1_score(
 
-####################################################
-# CLASSIFICATION REPORT
-####################################################
+        y_test,
 
-st.markdown("---")
+        pred,
 
-st.subheader("Classification Report")
+        average="weighted",
 
-report = classification_report(
+        zero_division=0
 
-    y_test,
+    )
+        ##############################################################
+    # KPI DASHBOARD
+    ##############################################################
 
-    pred,
+    st.markdown("---")
+    st.subheader("📊 Model Performance")
 
-    target_names=encoder.classes_,
+    c1, c2, c3, c4 = st.columns(4)
 
-    output_dict=True
+    c1.metric(
+        "Accuracy",
+        f"{acc:.4f}"
+    )
 
-)
+    c2.metric(
+        "Precision",
+        f"{precision:.4f}"
+    )
 
-report_df = pd.DataFrame(
+    c3.metric(
+        "Recall",
+        f"{recall:.4f}"
+    )
 
-    report
+    c4.metric(
+        "F1 Score",
+        f"{f1:.4f}"
+    )
 
-).transpose()
+    ##############################################################
+    # CONFUSION MATRIX
+    ##############################################################
 
-st.dataframe(
+    st.markdown("---")
+    st.subheader("🔥 Confusion Matrix")
 
-    report_df,
+    cm = confusion_matrix(
+        y_test,
+        pred
+    )
 
-    use_container_width=True
+    cm_df = pd.DataFrame(
+        cm,
+        index=encoder.classes_,
+        columns=encoder.classes_
+    )
 
-)
+    fig_cm = px.imshow(
 
-####################################################
-# FEATURE IMPORTANCE
-####################################################
+        cm_df,
 
-st.markdown("---")
+        text_auto=True,
 
-st.subheader("Feature Importance")
+        color_continuous_scale="Blues",
 
-importance = pd.DataFrame(
+        aspect="auto"
 
-    {
+    )
 
-        "Feature":feature_columns,
+    fig_cm.update_layout(
 
-        "Importance":model.feature_importances_
+        title="Confusion Matrix",
 
-    }
+        height=600
 
-)
+    )
 
-importance = importance.sort_values(
+    st.plotly_chart(
 
-    by="Importance",
+        fig_cm,
 
-    ascending=False
+        use_container_width=True
 
-)
+    )
 
-bar = px.bar(
+    ##############################################################
+    # CLASSIFICATION REPORT
+    ##############################################################
 
-    importance,
+    st.markdown("---")
+    st.subheader("📋 Classification Report")
 
-    x="Importance",
+    report = classification_report(
 
-    y="Feature",
+        y_test,
 
-    orientation="h",
+        pred,
 
-    color="Importance",
+        target_names=encoder.classes_,
 
-    color_continuous_scale="Viridis"
+        output_dict=True,
 
-)
+        zero_division=0
 
-bar.update_layout(
+    )
 
-    height=600,
+    report_df = pd.DataFrame(report).transpose()
 
-    title="XGBoost Feature Importance"
+    st.dataframe(
 
-)
+        report_df,
 
-st.plotly_chart(
+        use_container_width=True
 
-    bar,
+    )
+        ##############################################################
+    # FEATURE IMPORTANCE
+    ##############################################################
 
-    use_container_width=True
+    st.markdown("---")
+    st.subheader("🌳 Feature Importance")
 
-)
+    importance = pd.DataFrame(
 
-####################################################
-# TOP 10 FEATURE
-####################################################
+        {
 
-st.subheader("Top Important Variables")
+            "Feature": feature_columns,
 
-top10 = importance.head(10)
+            "Importance": model.feature_importances_
 
-st.dataframe(
+        }
 
-    top10,
+    )
 
-    use_container_width=True
+    importance = importance.sort_values(
 
-)
+        by="Importance",
 
-####################################################
-# FEATURE IMPORTANCE PIE
-####################################################
+        ascending=False
 
-pie = px.pie(
+    )
 
-    top10,
+    ##############################################################
+    # BAR CHART
+    ##############################################################
 
-    names="Feature",
+    fig_bar = px.bar(
 
-    values="Importance",
+        importance,
 
-    hole=.45
+        x="Importance",
 
-)
+        y="Feature",
 
-pie.update_layout(
+        orientation="h",
 
-    height=500,
+        color="Importance",
 
-    title="Contribution of Top Variables"
+        color_continuous_scale="Viridis"
 
-)
+    )
 
-st.plotly_chart(
+    fig_bar.update_layout(
 
-    pie,
+        title="XGBoost Feature Importance",
 
-    use_container_width=True
+        height=600
 
-)
+    )
 
-####################################################
-# DOWNLOAD FEATURE IMPORTANCE
-####################################################
+    st.plotly_chart(
 
-csv = importance.to_csv(
+        fig_bar,
 
-    index=False
+        use_container_width=True
 
-)
+    )
 
-st.download_button(
+    ##############################################################
+    # TOP 10 FEATURES
+    ##############################################################
 
-    "📥 Download Feature Importance",
+    st.subheader("🏆 Top 10 Important Variables")
 
-    csv,
+    top10 = importance.head(10)
 
-    file_name="feature_importance_xgboost.csv",
+    st.dataframe(
 
-    mime="text/csv"
+        top10,
 
-)
+        use_container_width=True
 
-####################################################
-# SAVE MODEL
-####################################################
+    )
 
-joblib.dump(
+    ##############################################################
+    # PIE CHART
+    ##############################################################
 
-    {
+    fig_pie = px.pie(
 
-        "model":model,
+        top10,
 
-        "encoder":encoder,
+        names="Feature",
 
-        "features":feature_columns
+        values="Importance",
 
-    },
+        hole=0.45,
 
-    "models/xgboost.pkl"
+        color_discrete_sequence=px.colors.qualitative.Set2
 
-)
+    )
 
-with open(
+    fig_pie.update_layout(
 
-    "models/xgboost.pkl",
+        title="Contribution of Top Variables",
 
-    "rb"
+        height=500
 
-) as f:
+    )
+
+    st.plotly_chart(
+
+        fig_pie,
+
+        use_container_width=True
+
+    )
+
+    ##############################################################
+    # DOWNLOAD FEATURE IMPORTANCE
+    ##############################################################
+
+    csv = importance.to_csv(index=False)
 
     st.download_button(
 
-        "💾 Download XGBoost Model",
+        "📥 Download Feature Importance",
 
-        data=f,
+        data=csv,
 
-        file_name="xgboost.pkl"
+        file_name="feature_importance_xgboost.csv",
 
-    )
-
-####################################################
-# SUMMARY
-####################################################
-
-st.markdown("---")
-
-st.success(f"""
-
-### XGBoost Training Completed
-
-Training Samples : {len(X_train)}
-
-Testing Samples : {len(X_test)}
-
-Number of Features : {len(feature_columns)}
-
-Model Accuracy : {acc:.4f}
-
-The trained model has been saved successfully
-and is ready for Explainable AI (SHAP),
-Prediction Dashboard,
-and Climate Decision Support System.
-
-""")
-
-####################################################
-# Prediction
-####################################################
-
-pred = model.predict(X_test)
-
-prob = model.predict_proba(X_test)
-
-####################################################
-# Evaluation
-####################################################
-
-acc = accuracy_score(
-
-    y_test,
-
-    pred
-
-)
-
-precision = precision_score(
-
-    y_test,
-
-    pred,
-
-    average="weighted"
-
-)
-
-recall = recall_score(
-
-    y_test,
-
-    pred,
-
-    average="weighted"
-
-)
-
-f1 = f1_score(
-
-    y_test,
-
-    pred,
-
-    average="weighted"
-
-)
-
-####################################################
-# KPI Dashboard
-####################################################
-
-st.markdown("---")
-
-st.subheader("📊 Model Performance")
-
-c1,c2,c3,c4 = st.columns(4)
-
-with c1:
-
-    st.metric(
-
-        "Accuracy",
-
-        f"{acc:.4f}"
+        mime="text/csv"
 
     )
+        ##############################################################
+    # PREDICTION RESULT
+    ##############################################################
 
-with c2:
+    st.markdown("---")
+    st.subheader("🔮 Prediction Result")
 
-    st.metric(
-
-        "Precision",
-
-        f"{precision:.4f}"
-
-    )
-
-with c3:
-
-    st.metric(
-
-        "Recall",
-
-        f"{recall:.4f}"
-
-    )
-
-with c4:
-
-    st.metric(
-
-        "F1 Score",
-
-        f"{f1:.4f}"
-
-    )
-
-####################################################
-# Prediction Table
-####################################################
-
-st.markdown("---")
-
-st.subheader("Prediction Result")
-
-result = pd.DataFrame(
-
-    {
+    result = pd.DataFrame({
 
         "Actual":
-
-            encoder.inverse_transform(
-
-                y_test
-
-            ),
+            encoder.inverse_transform(y_test),
 
         "Prediction":
+            encoder.inverse_transform(pred)
 
-            encoder.inverse_transform(
+    })
 
-                pred
+    st.dataframe(
 
-            )
+        result,
 
-    }
+        use_container_width=True
 
-)
+    )
 
-st.dataframe(
+    ##############################################################
+    # PREDICTION DISTRIBUTION
+    ##############################################################
 
-    result,
+    st.markdown("---")
+    st.subheader("📊 Prediction Distribution")
 
-    use_container_width=True
+    count = result["Prediction"].value_counts()
 
-)
+    fig = px.pie(
 
-####################################################
-# Prediction Distribution
-####################################################
+        names=count.index,
 
-st.subheader("Prediction Distribution")
+        values=count.values,
 
-count = result["Prediction"].value_counts()
+        hole=0.45,
 
-fig = px.pie(
+        color_discrete_sequence=px.colors.qualitative.Set2
 
-    names=count.index,
+    )
 
-    values=count.values,
+    fig.update_layout(
 
-    hole=.45,
+        height=450
 
-    color_discrete_sequence=px.colors.qualitative.Set2
+    )
 
-)
+    st.plotly_chart(
 
-fig.update_layout(
+        fig,
 
-    height=450
+        use_container_width=True
 
-)
+    )
 
-st.plotly_chart(
+    ##############################################################
+    # ACCURACY GAUGE
+    ##############################################################
 
-    fig,
+    st.markdown("---")
+    st.subheader("🎯 Model Accuracy Gauge")
 
-    use_container_width=True
+    gauge = go.Figure(
 
-)
+        go.Indicator(
 
-####################################################
-# Accuracy Gauge
-####################################################
+            mode="gauge+number",
 
-gauge = go.Figure(
+            value=acc*100,
 
-go.Indicator(
+            title={"text":"Accuracy (%)"},
 
-mode="gauge+number",
+            gauge={
 
-value=acc*100,
+                "axis":{"range":[0,100]},
 
-title={
+                "bar":{"color":"royalblue"},
 
-"text":"Accuracy"
+                "steps":[
 
-},
+                    {"range":[0,60],"color":"#ffb3b3"},
 
-gauge={
+                    {"range":[60,80],"color":"#ffe599"},
 
-"axis":{
+                    {"range":[80,90],"color":"#b6d7a8"},
 
-"range":[0,100]
+                    {"range":[90,100],"color":"#6aa84f"}
 
-},
+                ]
 
-"bar":{
+            }
 
-"color":"royalblue"
+        )
 
-},
+    )
 
-"steps":[
+    gauge.update_layout(
 
-{
+        height=420
 
-"range":[0,60],
+    )
 
-"color":"red"
+    st.plotly_chart(
 
-},
+        gauge,
 
-{
+        use_container_width=True
 
-"range":[60,80],
+    )
 
-"color":"orange"
+    ##############################################################
+    # SAVE MODEL
+    ##############################################################
 
-},
+    st.markdown("---")
 
-{
+    os.makedirs(
 
-"range":[80,90],
+        "models",
 
-"color":"yellow"
+        exist_ok=True
 
-},
+    )
 
-{
+    joblib.dump(
 
-"range":[90,100],
+        {
 
-"color":"green"
+            "model":model,
 
-}
+            "encoder":encoder,
 
-]
+            "features":feature_columns
 
-}
+        },
 
-)
+        "models/xgboost.pkl"
 
-)
+    )
 
-gauge.update_layout(
+    with open(
 
-height=420
+        "models/xgboost.pkl",
 
-)
+        "rb"
 
-st.plotly_chart(
+    ) as f:
 
-gauge,
+        st.download_button(
 
-use_container_width=True
+            "💾 Download XGBoost Model",
 
-)
+            data=f,
 
-####################################################
-# Download Prediction
-####################################################
+            file_name="xgboost.pkl",
 
-csv = result.to_csv(
+            mime="application/octet-stream"
 
-index=False
+        )
 
-)
+    ##############################################################
+    # DOWNLOAD PREDICTION
+    ##############################################################
 
-st.download_button(
+    csv = result.to_csv(
 
-"📥 Download Prediction",
+        index=False
 
-csv,
+    )
 
-file_name="prediction.csv",
+    st.download_button(
 
-mime="text/csv"
+        "📥 Download Prediction Result",
 
-)
-            st.success("Training Finished")
+        csv,
 
-            ####################################################
-            # Save Model
-            ####################################################
+        file_name="prediction_result.csv",
 
-            joblib.dump(
+        mime="text/csv"
 
-                {
+    )
 
-                    "model": model,
+    ##############################################################
+    # SUMMARY
+    ##############################################################
 
-                    "encoder": encoder
+    st.markdown("---")
 
-                },
+    st.success(f"""
 
-                "models/xgboost.pkl"
+### 🚀 XGBoost Training Completed Successfully
 
-            )
+**Training Samples :** {len(X_train)}
+
+**Testing Samples :** {len(X_test)}
+
+**Number of Features :** {len(feature_columns)}
+
+**Number of Classes :** {len(encoder.classes_)}
+
+**Accuracy :** {acc:.4f}
+
+**Precision :** {precision:.4f}
+
+**Recall :** {recall:.4f}
+
+**F1 Score :** {f1:.4f}
+
+Model berhasil disimpan sebagai:
+
+**models/xgboost.pkl**
+
+Model ini siap digunakan untuk:
+
+✅ Explainable AI (SHAP)
+
+✅ Prediction Dashboard
+
+✅ Climate Decision Support System
+
+""")
