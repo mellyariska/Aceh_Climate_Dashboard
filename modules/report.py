@@ -1,11 +1,6 @@
 ##############################################################
 # modules/report.py
 # Climate Intelligence Executive Report
-# Author : Melly Ariska
-##############################################################
-
-##############################################################
-# IMPORT LIBRARY
 ##############################################################
 
 import os
@@ -14,52 +9,47 @@ import numpy as np
 import pandas as pd
 
 import streamlit as st
-
 import plotly.express as px
 import plotly.graph_objects as go
 
 from datetime import datetime
 
+
 ##############################################################
-# REPORT DASHBOARD
+# MAIN FUNCTION
 ##############################################################
 
 def report_dashboard():
 
     ##############################################################
-    # PAGE HEADER
+    # HEADER
     ##############################################################
 
     st.header("📑 Climate Intelligence Executive Report")
 
     st.write("""
-    Executive Report ini menyajikan ringkasan hasil analisis
-    Machine Learning, Explainable Artificial Intelligence (SHAP),
-    Decision Support System (DSS), serta Early Warning System (EWS)
-    untuk prediksi bencana iklim di Provinsi Aceh.
-    """)
-
-    ##############################################################
-    # LOAD XGBOOST MODEL
-    ##############################################################
-
-    model_path = "models/xgboost.pkl"
-
-    if not os.path.exists(model_path):
-
-        st.error("Model XGBoost belum tersedia.")
-
-        st.info(
-            "Silakan buka menu **XGBoost** dan lakukan training model terlebih dahulu."
-        )
-
-        return
+Executive dashboard untuk merangkum hasil analisis
+Machine Learning, Explainable AI, Decision Support
+System dan Early Warning System.
+""")
 
     ##############################################################
     # LOAD MODEL
     ##############################################################
 
-    model_file = joblib.load(model_path)
+    MODEL_PATH = "models/xgboost.pkl"
+
+    if not os.path.exists(MODEL_PATH):
+
+        st.error("Model XGBoost belum tersedia.")
+
+        st.info(
+            "Silakan buka menu XGBoost kemudian lakukan Training Model."
+        )
+
+        return
+
+    model_file = joblib.load(MODEL_PATH)
 
     model = model_file["model"]
 
@@ -71,17 +61,29 @@ def report_dashboard():
     # LOAD DATASET
     ##############################################################
 
-    dataset_path = "data/data_aceh_1985_2025.xlsx"
+    files = [
 
-    if os.path.exists(dataset_path):
+        "data/data_aceh_1985_2025.xlsx",
 
-        df = pd.read_excel(dataset_path)
+        "data_aceh_1985_2025.xlsx",
 
-    elif os.path.exists("data_aceh_1985_2025.xlsx"):
+        "data/data_aceh.xlsx",
 
-        df = pd.read_excel("data_aceh_1985_2025.xlsx")
+        "data_aceh.xlsx"
 
-    else:
+    ]
+
+    df = None
+
+    for file in files:
+
+        if os.path.exists(file):
+
+            df = pd.read_excel(file)
+
+            break
+
+    if df is None:
 
         st.error("Dataset tidak ditemukan.")
 
@@ -94,7 +96,7 @@ def report_dashboard():
     df.columns = df.columns.str.strip()
 
     ##############################################################
-    # CONVERT FEATURE TO NUMERIC
+    # NUMERIC FEATURE
     ##############################################################
 
     for col in feature_columns:
@@ -109,10 +111,6 @@ def report_dashboard():
 
             )
 
-    ##############################################################
-    # HANDLE MISSING VALUE
-    ##############################################################
-
     df[feature_columns] = df[feature_columns].fillna(
 
         df[feature_columns].mean()
@@ -120,7 +118,7 @@ def report_dashboard():
     )
 
     ##############################################################
-    # CLEAN TARGET
+    # TARGET
     ##############################################################
 
     if "Disaster" in df.columns:
@@ -137,17 +135,12 @@ def report_dashboard():
 
         )
 
-    ##############################################################
-    # SUCCESS
-    ##############################################################
-
     st.success(
 
         f"Dataset berhasil dimuat ({len(df)} observasi)."
 
     )
-
-    ##############################################################
+        ##############################################################
     # EXECUTIVE SUMMARY
     ##############################################################
 
@@ -155,9 +148,9 @@ def report_dashboard():
 
     st.subheader("📋 Executive Summary")
 
-    col1,col2,col3 = st.columns([1,5,1])
+    c1, c2, c3 = st.columns([1,5,1])
 
-    with col1:
+    with c1:
 
         if os.path.exists("assets/logo_unsri.png"):
 
@@ -165,11 +158,11 @@ def report_dashboard():
 
                 "assets/logo_unsri.png",
 
-                width=90
+                width=80
 
             )
 
-    with col2:
+    with c2:
 
         st.markdown("""
 
@@ -177,11 +170,11 @@ def report_dashboard():
 
 ### Machine Learning • Explainable AI • Decision Support System
 
-**Aceh Extreme Climate Dashboard**
+Aceh Extreme Climate Dashboard
 
 """)
 
-    with col3:
+    with c3:
 
         if os.path.exists("assets/logo_bmkg.png"):
 
@@ -189,27 +182,23 @@ def report_dashboard():
 
                 "assets/logo_bmkg.png",
 
-                width=90
+                width=80
 
             )
 
     ##############################################################
-    # REPORT INFORMATION
+    # INFORMATION
     ##############################################################
-
-    st.markdown("---")
 
     today = datetime.now()
 
-    info1,info2 = st.columns(2)
+    info1, info2 = st.columns(2)
 
     with info1:
 
         st.info(f"""
 
-### Report Information
-
-**Date**
+### Report Date
 
 {today.strftime("%d %B %Y")}
 
@@ -235,9 +224,9 @@ Prediction Classes : {len(encoder.classes_)}
 
     st.markdown("---")
 
-    c1,c2,c3,c4 = st.columns(4)
+    k1,k2,k3,k4 = st.columns(4)
 
-    c1.metric(
+    k1.metric(
 
         "Observations",
 
@@ -245,7 +234,15 @@ Prediction Classes : {len(encoder.classes_)}
 
     )
 
-    c2.metric(
+    k2.metric(
+
+        "Variables",
+
+        len(df.columns)
+
+    )
+
+    k3.metric(
 
         "Climate Features",
 
@@ -253,19 +250,11 @@ Prediction Classes : {len(encoder.classes_)}
 
     )
 
-    c3.metric(
+    k4.metric(
 
         "Prediction Classes",
 
         len(encoder.classes_)
-
-    )
-
-    c4.metric(
-
-        "Missing Value",
-
-        int(df[feature_columns].isna().sum().sum())
 
     )
 
@@ -281,9 +270,9 @@ Prediction Classes : {len(encoder.classes_)}
 
         "Information":[
 
-            "Total Observation",
+            "Observation",
 
-            "Total Variables",
+            "Variables",
 
             "Climate Features",
 
@@ -324,16 +313,16 @@ Prediction Classes : {len(encoder.classes_)}
     )
 
     ##############################################################
-    # DATA PREVIEW
+    # PREVIEW
     ##############################################################
 
     st.markdown("---")
 
-    st.subheader("📊 Climate Dataset Preview")
+    st.subheader("📊 Dataset Preview")
 
     st.dataframe(
 
-        df.head(15),
+        df.head(10),
 
         use_container_width=True,
 
@@ -347,7 +336,7 @@ Prediction Classes : {len(encoder.classes_)}
 
     st.markdown("---")
 
-    st.subheader("📈 Descriptive Statistics")
+    st.subheader("📈 Climate Statistics")
 
     st.dataframe(
 
@@ -361,214 +350,94 @@ Prediction Classes : {len(encoder.classes_)}
     ##############################################################
 
     st.markdown("---")
+
     st.subheader("🎯 Machine Learning Performance")
 
-    from sklearn.metrics import (
-        accuracy_score,
-        precision_score,
-        recall_score,
-        f1_score,
-        confusion_matrix,
-        classification_report
-    )
-
     ##############################################################
-    # PREPARE DATA
+    # FEATURE IMPORTANCE SCORE
     ##############################################################
 
-    X = df[feature_columns].copy()
+    importance = pd.DataFrame({
 
-    ##############################################################
-    # PREDICT
-    ##############################################################
+        "Feature": feature_columns,
 
-    try:
-
-        pred = model.predict(X)
-
-        prob = model.predict_proba(X)
-
-    except Exception as e:
-
-        st.error(f"Gagal melakukan prediksi : {e}")
-
-        return
-
-    ##############################################################
-    # EVALUATION
-    ##############################################################
-
-    valid = df["Disaster"].isin(encoder.classes_)
-
-   ##############################################################
-# CLEAN TARGET LABEL
-##############################################################
-
-y = (
-    df["Disaster"]
-      .fillna("Normal")
-      .astype(str)
-      .str.strip()
-)
-
-##############################################################
-# DEBUG LABEL
-##############################################################
-
-st.write("Label pada model :", list(encoder.classes_))
-st.write("Label pada dataset :", sorted(y.unique()))
-
-##############################################################
-# FILTER LABEL VALID
-##############################################################
-
-valid = y.isin(encoder.classes_)
-
-if valid.sum() == 0:
-
-    st.error("Tidak ada label dataset yang cocok dengan model.")
-
-    return
-
-##############################################################
-# GUNAKAN DATA YANG SUDAH BERSIH
-##############################################################
-
-X = X.loc[valid].reset_index(drop=True)
-y = y.loc[valid].reset_index(drop=True)
-
-##############################################################
-# CEK APAKAH MASIH ADA DATA
-##############################################################
-
-if len(X) == 0:
-
-    st.error("Tidak ada data valid untuk evaluasi model.")
-
-    return
-
-##############################################################
-# ENCODE TARGET
-##############################################################
-
-try:
-
-    y_true = encoder.transform(y)
-
-except Exception:
-
-    st.warning(
-        "Label dataset tidak sepenuhnya sama dengan label model. Evaluasi dilewati."
-    )
-
-    acc = np.nan
-    precision = np.nan
-    recall = np.nan
-    f1 = np.nan
-
-else:
-
-    ##############################################################
-    # PREDIKSI ULANG
-    ##############################################################
-
-    y_pred = model.predict(X)
-
-    ##############################################################
-    # HITUNG METRIK
-    ##############################################################
-
-    acc = accuracy_score(
-        y_true,
-        y_pred
-    )
-
-    precision = precision_score(
-        y_true,
-        y_pred,
-        average="weighted",
-        zero_division=0
-    )
-
-    recall = recall_score(
-        y_true,
-        y_pred,
-        average="weighted",
-        zero_division=0
-    )
-
-    f1 = f1_score(
-        y_true,
-        y_pred,
-        average="weighted",
-        zero_division=0
-    )
-
-    ##############################################################
-    # KPI
-    ##############################################################
-
-    c1,c2,c3,c4 = st.columns(4)
-
-    c1.metric("Accuracy",f"{acc:.3f}")
-
-    c2.metric("Precision",f"{precision:.3f}")
-
-    c3.metric("Recall",f"{recall:.3f}")
-
-    c4.metric("F1 Score",f"{f1:.3f}")
-
-    ##############################################################
-    # PERFORMANCE BAR
-    ##############################################################
-
-    perf = pd.DataFrame({
-
-        "Metric":[
-
-            "Accuracy",
-
-            "Precision",
-
-            "Recall",
-
-            "F1 Score"
-
-        ],
-
-        "Score":[
-
-            acc,
-
-            precision,
-
-            recall,
-
-            f1
-
-        ]
+        "Importance": model.feature_importances_
 
     })
 
+    importance = importance.sort_values(
+
+        "Importance",
+
+        ascending=False
+
+    )
+
+    ##############################################################
+    # MODEL INFORMATION
+    ##############################################################
+
+    k1,k2,k3,k4 = st.columns(4)
+
+    k1.metric(
+
+        "Algorithm",
+
+        "XGBoost"
+
+    )
+
+    k2.metric(
+
+        "Features",
+
+        len(feature_columns)
+
+    )
+
+    k3.metric(
+
+        "Classes",
+
+        len(encoder.classes_)
+
+    )
+
+    k4.metric(
+
+        "Top Feature",
+
+        importance.iloc[0]["Feature"]
+
+    )
+
+    ##############################################################
+    # FEATURE IMPORTANCE
+    ##############################################################
+
     fig = px.bar(
 
-        perf,
+        importance,
 
-        x="Metric",
+        x="Importance",
 
-        y="Score",
+        y="Feature",
 
-        color="Score",
+        orientation="h",
 
-        text_auto=".3f",
+        color="Importance",
 
-        color_continuous_scale="Viridis"
+        color_continuous_scale="Viridis",
+
+        text_auto=".4f"
 
     )
 
     fig.update_layout(
 
-        height=450
+        height=550,
+
+        title="Model Feature Importance"
 
     )
 
@@ -581,105 +450,70 @@ else:
     )
 
     ##############################################################
-    # GAUGE
+    # MODEL SUMMARY
     ##############################################################
 
-    gauge = go.Figure(
+    st.success(f"""
 
-        go.Indicator(
+### Model Summary
 
-            mode="gauge+number",
+Algorithm : **Extreme Gradient Boosting**
 
-            value=acc*100,
+Climate Features : **{len(feature_columns)}**
 
-            title={"text":"Model Accuracy (%)"},
+Prediction Classes : **{len(encoder.classes_)}**
 
-            gauge={
+Most Important Variable :
 
-                "axis":{"range":[0,100]},
+**{importance.iloc[0]['Feature']}**
 
-                "bar":{"color":"royalblue"},
+Dashboard menggunakan model Machine Learning
+yang telah dilatih sebelumnya untuk melakukan
+prediksi kondisi iklim.
 
-                "steps":[
-
-                    {"range":[0,60],"color":"#ffcccc"},
-
-                    {"range":[60,80],"color":"#ffe599"},
-
-                    {"range":[80,90],"color":"#b6d7a8"},
-
-                    {"range":[90,100],"color":"#6aa84f"}
-
-                ]
-
-            }
-
-        )
-
-    )
-
-    gauge.update_layout(height=420)
-
-    st.plotly_chart(
-
-        gauge,
-
-        use_container_width=True
-
-    )
+""")
         ##############################################################
     # PREDICTION SUMMARY
     ##############################################################
 
     st.markdown("---")
-
-    st.subheader("🌦 Prediction Summary")
+    st.subheader("🔮 Prediction Summary")
 
     ##############################################################
     # LAST OBSERVATION
     ##############################################################
 
-    latest = X.tail(1)
+    latest = df[feature_columns].tail(1)
 
-    prediction = model.predict(
+    prediction = model.predict(latest)[0]
 
-        latest
+    probability = model.predict_proba(latest)[0]
 
-    )[0]
+    predicted_class = encoder.inverse_transform([prediction])[0]
 
-    probability = model.predict_proba(
-
-        latest
-
-    )[0]
-
-    predicted_class = encoder.inverse_transform(
-
-        [prediction]
-
-    )[0]
+    confidence = float(np.max(probability) * 100)
 
     ##############################################################
-    # RISK
+    # RISK LEVEL
     ##############################################################
-
-    confidence = float(
-
-        probability.max()*100
-
-    )
 
     if confidence < 40:
 
         risk_level = "LOW"
 
+        color = "🟢"
+
     elif confidence < 70:
 
         risk_level = "MODERATE"
 
+        color = "🟡"
+
     else:
 
         risk_level = "HIGH"
+
+        color = "🔴"
 
     ##############################################################
     # KPI
@@ -740,7 +574,7 @@ else:
     )
 
     ##############################################################
-    # BAR
+    # BAR CHART
     ##############################################################
 
     fig = px.bar(
@@ -761,9 +595,9 @@ else:
 
     fig.update_layout(
 
-        height=500,
+        title="Prediction Probability",
 
-        title="Prediction Probability"
+        height=500
 
     )
 
@@ -774,60 +608,29 @@ else:
         use_container_width=True
 
     )
-
-    ##############################################################
-    # PIE
-    ##############################################################
-
-    fig2 = px.pie(
-
-        prob_df,
-
-        names="Class",
-
-        values="Probability (%)",
-
-        hole=0.45,
-
-        color_discrete_sequence=px.colors.qualitative.Set2
-
-    )
-
-    fig2.update_layout(
-
-        height=450
-
-    )
-
-    st.plotly_chart(
-
-        fig2,
-
-        use_container_width=True
-
-    )
         ##############################################################
     # FEATURE IMPORTANCE
     ##############################################################
 
     st.markdown("---")
-    st.subheader("🌳 Feature Importance")
+
+    st.subheader("🌳 Climate Variable Importance")
 
     ##############################################################
-    # FEATURE IMPORTANCE
+    # IMPORTANCE TABLE
     ##############################################################
 
     importance = pd.DataFrame({
 
-        "Feature": feature_columns,
+        "Feature":feature_columns,
 
-        "Importance": model.feature_importances_
+        "Importance":model.feature_importances_
 
     })
 
     importance = importance.sort_values(
 
-        by="Importance",
+        "Importance",
 
         ascending=False
 
@@ -857,7 +660,7 @@ else:
 
     c3.metric(
 
-        "Climate Variables",
+        "Variables",
 
         len(feature_columns)
 
@@ -878,7 +681,7 @@ else:
     )
 
     ##############################################################
-    # BAR CHART
+    # BAR
     ##############################################################
 
     fig = px.bar(
@@ -901,9 +704,9 @@ else:
 
     fig.update_layout(
 
-        title="XGBoost Feature Importance",
+        height=600,
 
-        height=600
+        title="Feature Importance"
 
     )
 
@@ -916,7 +719,7 @@ else:
     )
 
     ##############################################################
-    # PIE CHART
+    # PIE
     ##############################################################
 
     fig2 = px.pie(
@@ -935,7 +738,7 @@ else:
 
     fig2.update_layout(
 
-        title="Top 10 Important Variables",
+        title="Top 10 Variables",
 
         height=500
 
@@ -949,22 +752,15 @@ else:
 
     )
 
-    ##############################################################
-    # INTERPRETATION
-    ##############################################################
-
     st.success(f"""
 
-Top predictor berdasarkan model adalah
+Most influential climate variable:
 
-**{importance.iloc[0]['Feature']}**
+### {importance.iloc[0]['Feature']}
 
-dengan nilai importance sebesar
+Importance Score:
 
-**{importance.iloc[0]['Importance']:.4f}**
-
-Variabel tersebut memberikan kontribusi terbesar
-terhadap prediksi bencana iklim.
+### {importance.iloc[0]['Importance']:.4f}
 
 """)
         ##############################################################
@@ -972,10 +768,11 @@ terhadap prediksi bencana iklim.
     ##############################################################
 
     st.markdown("---")
+
     st.subheader("🚨 Early Warning System")
 
     ##############################################################
-    # RISK LEVEL
+    # CLIMATE RISK INDEX
     ##############################################################
 
     climate_risk = confidence
@@ -984,7 +781,7 @@ terhadap prediksi bencana iklim.
 
         status = "LOW"
 
-        message = "🟢 Normal Climate Condition"
+        message = "🟢 Normal Condition"
 
     elif climate_risk < 70:
 
@@ -1014,7 +811,7 @@ terhadap prediksi bencana iklim.
 
     c2.metric(
 
-        "Risk Level",
+        "Risk Status",
 
         status
 
@@ -1022,7 +819,7 @@ terhadap prediksi bencana iklim.
 
     c3.metric(
 
-        "Early Warning",
+        "Warning",
 
         message
 
@@ -1040,7 +837,7 @@ terhadap prediksi bencana iklim.
 
             value=climate_risk,
 
-            title={"text":"Climate Risk Index"},
+            title={"text":"Climate Risk Index (%)"},
 
             gauge={
 
@@ -1050,29 +847,11 @@ terhadap prediksi bencana iklim.
 
                 "steps":[
 
-                    {
+                    {"range":[0,40],"color":"#b6d7a8"},
 
-                        "range":[0,40],
+                    {"range":[40,70],"color":"#ffe599"},
 
-                        "color":"#b6d7a8"
-
-                    },
-
-                    {
-
-                        "range":[40,70],
-
-                        "color":"#ffe599"
-
-                    },
-
-                    {
-
-                        "range":[70,100],
-
-                        "color":"#f4cccc"
-
-                    }
+                    {"range":[70,100],"color":"#f4cccc"}
 
                 ]
 
@@ -1106,9 +885,9 @@ terhadap prediksi bencana iklim.
 
 ### 🟢 LOW RISK
 
-Climate conditions are relatively stable.
+Climate condition is stable.
 
-Routine monitoring is recommended.
+Routine monitoring is sufficient.
 
 """)
 
@@ -1118,9 +897,9 @@ Routine monitoring is recommended.
 
 ### 🟡 MODERATE RISK
 
-Potential extreme climate event detected.
+Potential climate anomaly detected.
 
-Increase monitoring and preparedness.
+Increase preparedness and monitoring.
 
 """)
 
@@ -1132,99 +911,61 @@ Increase monitoring and preparedness.
 
 High probability of extreme climate event.
 
-Activate the Early Warning System immediately.
+Early Warning System should be activated immediately.
 
 """)
-
-    ##############################################################
-    # RISK DISTRIBUTION
-    ##############################################################
-
-    risk_df = pd.DataFrame({
-
-        "Category":[
-
-            "Risk",
-
-            "Safe"
-
-        ],
-
-        "Value":[
-
-            climate_risk,
-
-            100-climate_risk
-
-        ]
-
-    })
-
-    fig = px.pie(
-
-        risk_df,
-
-        names="Category",
-
-        values="Value",
-
-        hole=0.60,
-
-        color_discrete_sequence=[
-
-            "#d62728",
-
-            "#d9d9d9"
-
-        ]
-
-    )
-
-    fig.update_layout(
-
-        title="Climate Risk Distribution",
-
-        height=420
-
-    )
-
-    st.plotly_chart(
-
-        fig,
-
-        use_container_width=True
-
-    )
-        ##############################################################
+            ##############################################################
     # DECISION SUPPORT RECOMMENDATION
     ##############################################################
 
     st.markdown("---")
+
     st.subheader("🧭 Decision Support Recommendation")
 
-    if status == "LOW":
+    ##############################################################
+    # RECOMMENDATION
+    ##############################################################
+
+    if risk_level == "LOW":
 
         recommendation = [
-            "Melakukan monitoring iklim secara rutin.",
-            "Memperbarui database iklim bulanan.",
-            "Melanjutkan kegiatan normal."
+
+            "Continue routine climate monitoring.",
+
+            "Maintain existing environmental management.",
+
+            "Update climate database periodically.",
+
+            "Perform regular validation of climate sensors."
+
         ]
 
-    elif status == "MODERATE":
+    elif risk_level == "MODERATE":
 
         recommendation = [
-            "Meningkatkan monitoring cuaca harian.",
-            "Menyiapkan sumber daya mitigasi bencana.",
-            "Memberikan informasi dini kepada masyarakat."
+
+            "Increase climate monitoring frequency.",
+
+            "Prepare local disaster response teams.",
+
+            "Coordinate with BMKG and BPBD.",
+
+            "Disseminate early information to stakeholders."
+
         ]
 
     else:
 
         recommendation = [
-            "Mengaktifkan Early Warning System.",
-            "Melakukan koordinasi dengan BPBD dan BMKG.",
-            "Menyebarkan peringatan kepada masyarakat.",
-            "Menyiapkan rencana evakuasi apabila diperlukan."
+
+            "Activate the Early Warning System immediately.",
+
+            "Coordinate emergency response with local government.",
+
+            "Issue public warnings through official channels.",
+
+            "Prepare evacuation plans for vulnerable communities."
+
         ]
 
     for i, rec in enumerate(recommendation, start=1):
@@ -1236,27 +977,36 @@ Activate the Early Warning System immediately.
     ##############################################################
 
     st.markdown("---")
+
     st.subheader("📊 Decision Support Score")
 
-    score = round(climate_risk,2)
+    score = confidence
 
     fig = go.Figure(
 
         go.Indicator(
 
-            mode="number+delta",
+            mode="gauge+number",
 
             value=score,
 
-            number={"suffix":" %"},
+            title={"text":"Decision Support Score (%)"},
 
-            title={"text":"Climate Decision Score"},
+            gauge={
 
-            delta={
+                "axis":{"range":[0,100]},
 
-                "reference":50,
+                "bar":{"color":"royalblue"},
 
-                "relative":False
+                "steps":[
+
+                    {"range":[0,40],"color":"#b6d7a8"},
+
+                    {"range":[40,70],"color":"#ffe599"},
+
+                    {"range":[70,100],"color":"#f4cccc"}
+
+                ]
 
             }
 
@@ -1264,7 +1014,11 @@ Activate the Early Warning System immediately.
 
     )
 
-    fig.update_layout(height=300)
+    fig.update_layout(
+
+        height=350
+
+    )
 
     st.plotly_chart(
 
@@ -1275,37 +1029,44 @@ Activate the Early Warning System immediately.
     )
 
     ##############################################################
-    # SUMMARY BOX
+    # EXECUTIVE CONCLUSION
     ##############################################################
+
+    st.markdown("---")
 
     st.success(f"""
 
 ### Executive Conclusion
 
-**Prediction**
+**Predicted Climate Condition**
 
 : **{predicted_class}**
 
-**Confidence**
+**Prediction Confidence**
 
 : **{confidence:.2f}%**
 
-**Climate Risk**
+**Climate Risk Level**
 
-: **{status}**
+: **{risk_level}**
 
-Dashboard merekomendasikan agar pengambil keputusan
-menggunakan hasil prediksi Machine Learning sebagai
-alat bantu dalam penyusunan strategi mitigasi bencana
-dan perencanaan adaptasi perubahan iklim.
+**Most Influential Climate Variable**
+
+: **{importance.iloc[0]['Feature']}**
+
+The Climate Intelligence Platform recommends that
+decision makers use these prediction results to support
+climate adaptation, disaster mitigation, and regional
+planning.
 
 """)
         ##############################################################
-    # DOWNLOAD REPORT
+    # EXPORT REPORT
     ##############################################################
 
     st.markdown("---")
-    st.subheader("💾 Export Report")
+
+    st.subheader("📥 Export Executive Report")
 
     ##############################################################
     # SUMMARY TABLE
@@ -1317,17 +1078,19 @@ dan perencanaan adaptasi perubahan iklim.
 
             "Prediction",
 
-            "Confidence",
+            "Confidence (%)",
 
             "Risk Level",
 
-            "Accuracy",
+            "Top Feature",
 
-            "Precision",
+            "Importance",
 
-            "Recall",
+            "Climate Variables",
 
-            "F1 Score"
+            "Prediction Classes",
+
+            "Observation"
 
         ],
 
@@ -1337,15 +1100,17 @@ dan perencanaan adaptasi perubahan iklim.
 
             round(confidence,2),
 
-            status,
+            risk_level,
 
-            round(acc,4),
+            importance.iloc[0]["Feature"],
 
-            round(precision,4),
+            round(float(importance.iloc[0]["Importance"]),4),
 
-            round(recall,4),
+            len(feature_columns),
 
-            round(f1,4)
+            len(encoder.classes_),
+
+            len(df)
 
         ]
 
@@ -1373,7 +1138,7 @@ dan perencanaan adaptasi perubahan iklim.
 
         data=csv,
 
-        file_name="executive_report.csv",
+        file_name="Executive_Report.csv",
 
         mime="text/csv"
 
@@ -1391,7 +1156,7 @@ dan perencanaan adaptasi perubahan iklim.
 
         data=csv2,
 
-        file_name="feature_importance.csv",
+        file_name="Feature_Importance.csv",
 
         mime="text/csv"
 
@@ -1403,16 +1168,36 @@ dan perencanaan adaptasi perubahan iklim.
 
     st.markdown("---")
 
-    st.caption("""
+    st.markdown("""
 
-Aceh Extreme Climate Dashboard
+<div style="text-align:center;padding:25px">
 
-Machine Learning • XGBoost • Explainable AI • Decision Support System
+<h3>🌦 Climate Intelligence Platform</h3>
 
-Developed by **Melly Ariska**
+<b>Machine Learning • Explainable AI • Decision Support System</b>
+
+<br><br>
+
+Developed by
+
+<b>Melly Ariska</b>
+
+<br>
+
+Physics Education Department
+
+Faculty of Teacher Training and Education
 
 Universitas Sriwijaya
 
-© 2026
+<br><br>
 
-""")
+Aceh Extreme Climate Dashboard
+
+Version 2.0 | 2026
+
+</div>
+
+""",
+
+    unsafe_allow_html=True)
