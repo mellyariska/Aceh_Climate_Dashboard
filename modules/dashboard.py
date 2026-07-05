@@ -52,11 +52,11 @@ def dashboard(df):
 
     with left:
 
-        if os.path.exists("assets/Download-PNG-Logo-Universitas-Sriwijaya_.jpg"):
+        if os.path.exists("assets/logo_unsri.jfif"):
 
             st.image(
 
-                "assets/Download-PNG-Logo-Universitas-Sriwijaya_.jpg",
+                "assets/logo_unsri.jfif",
 
                 width=100
 
@@ -355,11 +355,11 @@ Universitas Sriwijaya
 
     with c1:
 
-        if os.path.exists("assets/Download-PNG-Logo-Universitas-Sriwijaya_.jpg"):
+        if os.path.exists("assets/logo_unsri.jfif"):
 
             st.image(
 
-                "assets/Download-PNG-Logo-Universitas-Sriwijaya_.jpg",
+                "assets/logo_unsri.jfif",
 
                 width=60
 
