@@ -32,128 +32,79 @@ terhadap prediksi XGBoost.
 
 """)
 
-    ##############################################################
-    # LOAD MODEL
-    ##############################################################
+   ##############################################################
+# LOAD MODEL
+##############################################################
 
-    try:
+model_file = joblib.load("models/xgboost.pkl")
 
-        model_file = joblib.load(
+model = model_file["model"]
 
-            "models/xgboost.pkl"
+feature_columns = model_file["features"]
 
-        )
+##############################################################
+# PREPROCESSING
+##############################################################
 
-    except:
+X = df[feature_columns].copy()
 
-        st.error(
+for c in feature_columns:
+    X[c] = pd.to_numeric(X[c], errors="coerce")
 
-            "Model xgboost.pkl belum tersedia."
+X = X.fillna(X.mean())
 
-        )
+##############################################################
+# SHAP EXPLAINER
+##############################################################
 
-        return
+explainer = shap.Explainer(model)
 
-    model = model_file["model"]
-        ##############################################################
-    # FEATURE
-    ##############################################################
+shap_values = explainer(X)
 
-    feature_columns=[
+##############################################################
+# HANDLE MULTICLASS
+##############################################################
 
-        "Rainfall",
-        "Tmax",
-        "Tmin",
-        "Humidity",
-        "Pressure",
-        "Wind",
-        "Solar",
-        "ENSO",
-        "IOD",
-        "NDVI",
-        "SPI"
+if len(shap_values.values.shape) == 3:
 
-    ]
+    # (sample, feature, class)
+    if shap_values.values.shape[1] == len(feature_columns):
 
-    ##############################################################
-    # PREPROCESSING
-    ##############################################################
+        shap_matrix = shap_values.values[:, :, 0]
 
-    X=df[feature_columns].copy()
+    # (sample, class, feature)
+    else:
 
-    for col in feature_columns:
+        shap_matrix = shap_values.values[:, 0, :]
 
-        X[col]=pd.to_numeric(
+else:
 
-            X[col],
+    shap_matrix = shap_values.values
 
-            errors="coerce"
+##############################################################
+# CREATE EXPLANATION
+##############################################################
 
-        )
+shap_plot = shap.Explanation(
 
-    X=X.fillna(
+    values=shap_matrix,
 
-        X.mean(
+    base_values=np.repeat(
+        np.mean(np.array(shap_values.base_values)),
+        len(X)
+    ),
 
-            numeric_only=True
+    data=X.values,
 
-        )
+    feature_names=feature_columns
 
-    )
+)
 
-    st.success(
+st.success("SHAP values successfully calculated.")
 
-        f"{len(X)} observasi berhasil dimuat."
+st.write("X shape :", X.shape)
 
-    )
-        ##############################################################
-    # SHAP EXPLAINER
-    ##############################################################
-
-    st.markdown("---")
-    st.subheader("⚙ SHAP Explainer")
-
-    with st.spinner("Calculating SHAP values..."):
-
-        try:
-
-            ##########################################################
-            # SHAP versi terbaru
-            ##########################################################
-
-            explainer = shap.Explainer(model)
-
-            shap_values = explainer(X)
-
-            values = shap_values.values
-
-        except Exception:
-
-            ##########################################################
-            # Fallback jika menggunakan TreeExplainer
-            ##########################################################
-
-            explainer = shap.TreeExplainer(model)
-
-            values = explainer.shap_values(X)
-
-            # Jika hasil berupa list (multiclass lama)
-            if isinstance(values, list):
-
-                values = np.stack(values, axis=-1)
-
-            # Ubah menjadi objek Explanation agar kompatibel
-            shap_values = shap.Explanation(
-
-                values=values,
-
-                base_values=np.mean(explainer.expected_value),
-
-                data=X.values,
-
-                feature_names=feature_columns
-
-            )
+st.write("SHAP :", shap_matrix.shape)
 
     ##############################################################
     # CEK DIMENSI SHAP
@@ -210,61 +161,19 @@ Dimensi SHAP : {values.shape}
 
     )
         ##############################################################
-    # SHAP SUMMARY PLOT
-    ##############################################################
+   fig = plt.figure(figsize=(10,6))
 
-    st.markdown("---")
+shap.plots.beeswarm(
 
-    st.subheader("📊 SHAP Summary Plot")
+    shap_plot,
 
-    st.write("""
-Summary Plot menunjukkan pengaruh setiap variabel
-terhadap prediksi model secara keseluruhan.
-""")
+    show=False
 
-    fig_summary = plt.figure(figsize=(10,6))
+)
 
-    try:
+st.pyplot(fig)
 
-        explanation = shap.Explanation(
-
-            values=shap_matrix,
-
-            base_values=np.zeros(X.shape[0]),
-
-            data=X.values,
-
-            feature_names=feature_columns
-
-        )
-
-        shap.plots.beeswarm(
-
-            explanation,
-
-            max_display=20,
-
-            show=False
-
-        )
-
-        st.pyplot(
-
-            fig_summary,
-
-            use_container_width=True
-
-        )
-
-    except Exception as e:
-
-        st.error(
-
-            f"Summary plot gagal : {e}"
-
-        )
-
-    plt.close()
+plt.close()
 
     ##############################################################
     # BAR SUMMARY
@@ -305,12 +214,28 @@ terhadap prediksi model secara keseluruhan.
         )
 
     plt.close()
+
         ##############################################################
     # GLOBAL FEATURE IMPORTANCE
     ##############################################################
 
-    st.markdown("---")
-    st.subheader("🌍 Global SHAP Feature Importance")
+    vals = np.abs(shap_matrix).mean(axis=0)
+
+importance = pd.DataFrame({
+
+    "Feature": feature_columns,
+
+    "Mean_SHAP": vals
+
+})
+
+importance = importance.sort_values(
+
+    "Mean_SHAP",
+
+    ascending=False
+
+)
 
     ##############################################################
     # Mean Absolute SHAP
@@ -599,42 +524,13 @@ variabel iklim terhadap hasil prediksi model.
     # WATERFALL PLOT
     ##############################################################
 
-    st.markdown("---")
+   shap.plots.waterfall(
 
-    st.subheader("💧 SHAP Waterfall Plot")
+    shap_plot[idx],
 
-    try:
+    show=False
 
-        fig_water = plt.figure(figsize=(10,7))
-
-        shap.plots.waterfall(
-
-            shap_values[idx],
-
-            max_display=15,
-
-            show=False
-
-        )
-
-        st.pyplot(
-
-            fig_water,
-
-            use_container_width=True
-
-        )
-
-        plt.close()
-
-    except Exception as e:
-
-        st.warning(
-
-            f"Waterfall Plot tidak tersedia : {e}"
-
-        )
-
+)
     ##############################################################
     # LOCAL FEATURE CONTRIBUTION
     ##############################################################
