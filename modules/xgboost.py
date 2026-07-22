@@ -676,55 +676,62 @@ Extreme Gradient Boosting (XGBoost).
 
     )
 
-    ##############################################################
-    # SAVE MODEL
-    ##############################################################
+##############################################################
+# SAVE MODEL
+##############################################################
 
-    st.markdown("---")
+st.markdown("---")
 
-    os.makedirs(
+# ==========================================================
+# SAVE MODEL TO SESSION
+# ==========================================================
 
-        "models",
+st.session_state["xgb_model"] = model
+st.session_state["encoder"] = encoder
+st.session_state["feature_columns"] = feature_columns
+st.session_state["X_train"] = X_train
+st.session_state["X_test"] = X_test
+st.session_state["y_train"] = y_train
+st.session_state["y_test"] = y_test
 
-        exist_ok=True
+# ==========================================================
+# SAVE MODEL TO FILE
+# ==========================================================
 
-    )
+os.makedirs("models", exist_ok=True)
 
-    joblib.dump(
+model_data = {
+    "model": model,
+    "encoder": encoder,
+    "features": feature_columns,
+    "X_train": X_train,
+    "X_test": X_test,
+    "y_train": y_train,
+    "y_test": y_test
+}
 
-        {
+joblib.dump(model_data, "models/xgboost.pkl")
 
-            "model":model,
+# ==========================================================
+# VERIFY MODEL
+# ==========================================================
 
-            "encoder":encoder,
+if os.path.exists("models/xgboost.pkl"):
 
-            "features":feature_columns
+    st.success("✅ XGBoost model saved successfully.")
 
-        },
-
-        "models/xgboost.pkl"
-
-    )
-
-    with open(
-
-        "models/xgboost.pkl",
-
-        "rb"
-
-    ) as f:
+    with open("models/xgboost.pkl", "rb") as f:
 
         st.download_button(
-
             "💾 Download XGBoost Model",
-
             data=f,
-
             file_name="xgboost.pkl",
-
             mime="application/octet-stream"
-
         )
+
+else:
+
+    st.error("❌ Failed to save XGBoost model.")
 
     ##############################################################
     # DOWNLOAD PREDICTION
