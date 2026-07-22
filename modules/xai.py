@@ -45,23 +45,61 @@ mempengaruhi hasil prediksi model XGBoost.
 
         return
 
-    ##############################################################
-    # LOAD MODEL
-    ##############################################################
+   ##############################################################
+# LOAD MODEL
+##############################################################
 
-    model_file = joblib.load(model_path)
+MODEL_PATH = "models/xgboost.pkl"
+
+model = None
+encoder = None
+feature_columns = None
+
+# ==========================================================
+# PRIORITAS 1 : Ambil dari Session
+# ==========================================================
+
+if "xgb_model" in st.session_state:
+
+    model = st.session_state["xgb_model"]
+    encoder = st.session_state["encoder"]
+    feature_columns = st.session_state["feature_columns"]
+
+    st.success("✅ XGBoost model loaded from Session.")
+
+# ==========================================================
+# PRIORITAS 2 : Ambil dari File
+# ==========================================================
+
+elif os.path.exists(MODEL_PATH):
+
+    model_file = joblib.load(MODEL_PATH)
 
     model = model_file["model"]
-
     encoder = model_file["encoder"]
-
     feature_columns = model_file["features"]
 
-    st.success("✅ XGBoost Model Loaded Successfully")
+    # kalau X_train ikut disimpan
+    if "X_train" in model_file:
+        X = model_file["X_train"]
 
-    st.write("Jumlah Feature :", len(feature_columns))
-        ##############################################################
-    # PREPROCESSING
+    st.success("✅ XGBoost model loaded from File.")
+
+# ==========================================================
+# JIKA MODEL BELUM ADA
+# ==========================================================
+
+else:
+
+    st.error("❌ XGBoost model belum tersedia.")
+
+    st.info("""
+Silakan buka menu **XGBoost** kemudian klik **Train Model** terlebih dahulu.
+""")
+
+    st.stop()
+
+st.write("Jumlah Feature :", len(feature_columns))    # PREPROCESSING
     ##############################################################
 
     X = df[feature_columns].copy()
