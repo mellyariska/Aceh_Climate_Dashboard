@@ -676,121 +676,69 @@ Extreme Gradient Boosting (XGBoost).
 
     )
 
-##############################################################
-# SAVE MODEL
-##############################################################
-
-st.markdown("---")
-
-# ==========================================================
-# SAVE MODEL TO SESSION
-# ==========================================================
-
-st.session_state["xgb_model"] = model
-st.session_state["encoder"] = encoder
-st.session_state["feature_columns"] = feature_columns
-st.session_state["X_train"] = X_train
-st.session_state["X_test"] = X_test
-st.session_state["y_train"] = y_train
-st.session_state["y_test"] = y_test
-
-# ==========================================================
-# SAVE MODEL TO FILE
-# ==========================================================
-
-os.makedirs("models", exist_ok=True)
-
-model_data = {
-    "model": model,
-    "encoder": encoder,
-    "features": feature_columns,
-    "X_train": X_train,
-    "X_test": X_test,
-    "y_train": y_train,
-    "y_test": y_test
-}
-
-joblib.dump(model_data, "models/xgboost.pkl")
-
-# ==========================================================
-# VERIFY MODEL
-# ==========================================================
-
-if os.path.exists("models/xgboost.pkl"):
-
-    st.success("✅ XGBoost model saved successfully.")
-
-    with open("models/xgboost.pkl", "rb") as f:
-
-        st.download_button(
-            "💾 Download XGBoost Model",
-            data=f,
-            file_name="xgboost.pkl",
-            mime="application/octet-stream"
-        )
-
-else:
-
-    st.error("❌ Failed to save XGBoost model.")
-
     ##############################################################
-    # DOWNLOAD PREDICTION
-    ##############################################################
-
-    csv = result.to_csv(
-
-        index=False
-
-    )
-
-    st.download_button(
-
-        "📥 Download Prediction Result",
-
-        csv,
-
-        file_name="prediction_result.csv",
-
-        mime="text/csv"
-
-    )
-
-    ##############################################################
-    # SUMMARY
+    # SAVE MODEL
     ##############################################################
 
     st.markdown("---")
 
-    st.success(f"""
+    st.session_state["xgb_model"] = model
+    st.session_state["encoder"] = encoder
+    st.session_state["feature_columns"] = feature_columns
+    st.session_state["X_train"] = X_train
+    st.session_state["X_test"] = X_test
+    st.session_state["y_train"] = y_train
+    st.session_state["y_test"] = y_test
 
+    os.makedirs("models", exist_ok=True)
+
+    model_data = {
+        "model": model,
+        "encoder": encoder,
+        "features": feature_columns,
+        "X_train": X_train,
+        "X_test": X_test,
+        "y_train": y_train,
+        "y_test": y_test
+    }
+
+    joblib.dump(model_data, "models/xgboost.pkl")
+
+    if os.path.exists("models/xgboost.pkl"):
+        st.success("✅ XGBoost model saved successfully.")
+
+        with open("models/xgboost.pkl","rb") as f:
+            st.download_button(
+                "💾 Download XGBoost Model",
+                data=f,
+                file_name="xgboost.pkl",
+                mime="application/octet-stream"
+            )
+
+    csv = result.to_csv(index=False)
+
+    st.download_button(
+        "📥 Download Prediction Result",
+        csv,
+        file_name="prediction_result.csv",
+        mime="text/csv"
+    )
+
+    st.markdown("---")
+
+    st.success(f"""
 ### 🚀 XGBoost Training Completed Successfully
 
 **Training Samples :** {len(X_train)}
-
 **Testing Samples :** {len(X_test)}
-
 **Number of Features :** {len(feature_columns)}
-
 **Number of Classes :** {len(encoder.classes_)}
 
 **Accuracy :** {acc:.4f}
-
 **Precision :** {precision:.4f}
-
 **Recall :** {recall:.4f}
-
 **F1 Score :** {f1:.4f}
 
 Model berhasil disimpan sebagai:
-
-**models/xgboost.pkl**
-
-Model ini siap digunakan untuk:
-
-✅ Explainable AI (SHAP)
-
-✅ Prediction Dashboard
-
-✅ Climate Decision Support System
-
+models/xgboost.pkl
 """)
