@@ -99,7 +99,10 @@ Silakan buka menu **XGBoost** kemudian klik **Train Model** terlebih dahulu.
 
     st.stop()
 
-st.write("Jumlah Feature :", len(feature_columns))    # PREPROCESSING
+st.write("Jumlah Feature :", len(feature_columns))   
+
+
+# PREPROCESSING
     ##############################################################
 
     X = df[feature_columns].copy()
